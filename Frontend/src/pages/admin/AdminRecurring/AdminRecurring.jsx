@@ -1,119 +1,135 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Table, Button, Badge, Modal, Form, InputGroup } from 'react-bootstrap';
-import { FaPlus, FaEdit, FaTrash, FaPause, FaPlay, FaRupeeSign } from 'react-icons/fa';
+import { FaPlus, FaEdit, FaTrash, FaPause, FaPlay, FaRupeeSign, FaEye } from 'react-icons/fa';
 import toast from 'react-hot-toast';
+import api from '../../../api/axiosInstance';
 import './AdminRecurring.css';
 
 const AdminRecurring = () => {
     // Courts configuration
-    const courts = [
-        'Football',
-        'Cricket',
-        'Badminton - Court 1',
-        'Badminton - Court 2',
-        'Pickleball'
-    ];
+    const [courts, setCourts] = useState([]);
+    const [recurringBookings, setRecurringBookings] = useState([]);
+    const [loading, setLoading] = useState(true);
 
     const daysOfWeek = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
-    // Mock data
-    const [recurringBookings, setRecurringBookings] = useState([
-        {
-            id: 1,
-            customerName: 'Rahul Sharma',
-            phone: '9876543210',
-            court: 'Football',
-            recurrenceType: 'Weekly',
-            fixedDays: ['Mon', 'Wed', 'Fri'],
-            fixedTime: '18:00',
-            monthlyAmount: 15000,
-            paymentStatus: 'Paid',
-            status: 'Active',
-            startDate: '2026-01-01',
-            endDate: null
-        },
-        {
-            id: 2,
-            customerName: 'Priya Singh',
-            phone: '9123456780',
-            court: 'Badminton - Court 1',
-            recurrenceType: 'Weekly',
-            fixedDays: ['Tue', 'Thu'],
-            fixedTime: '17:00',
-            monthlyAmount: 4800,
-            paymentStatus: 'Pending',
-            status: 'Active',
-            startDate: '2026-01-05',
-            endDate: '2026-06-30'
-        },
-        {
-            id: 3,
-            customerName: 'Amit Verma',
-            phone: '9988776655',
-            court: 'Cricket',
-            recurrenceType: 'Monthly',
-            fixedDays: ['Sat'],
-            fixedTime: '09:00',
-            monthlyAmount: 5200,
-            paymentStatus: 'Paid',
-            status: 'Paused',
-            startDate: '2025-12-01',
-            endDate: null
+    // Map Backend <-> Frontend Enums
+    const toFrontendDay = (d) => d.charAt(0) + d.slice(1).toLowerCase();
+    const toBackendDay = (d) => d.toUpperCase();
+
+    // Fetch Initial Data
+    useEffect(() => {
+        fetchCourts();
+        fetchRecurringBookings();
+    }, []);
+
+    const fetchCourts = async () => {
+        try {
+            const { data } = await api.get('/courts');
+            setCourts(data);
+        } catch (error) {
+            console.error('Error fetching courts:', error);
         }
-    ]);
+    };
+
+    const fetchRecurringBookings = async () => {
+        try {
+            setLoading(true);
+            const { data } = await api.get('/recurring-bookings');
+            setRecurringBookings(data.data || []);
+        } catch (error) {
+            console.error('Error fetching rules:', error);
+            toast.error('Failed to load bookings');
+        } finally {
+            setLoading(false);
+        }
+    };
 
     // Modal states
     const [showModal, setShowModal] = useState(false);
     const [showDeleteModal, setShowDeleteModal] = useState(false);
+    const [showViewModal, setShowViewModal] = useState(false);
     const [editingBooking, setEditingBooking] = useState(null);
     const [bookingToDelete, setBookingToDelete] = useState(null);
+    const [viewBooking, setViewBooking] = useState(null);
 
     // Form data
     const [formData, setFormData] = useState({
         customerName: '',
         phone: '',
-        court: 'Football',
-        recurrenceType: 'Weekly',
+        courtId: '',
+        sport: '', // Derived but stored for UI
+        recurrenceType: 'WEEKLY',
         fixedDays: [],
-        fixedTime: '',
+        fixedTime: '', // Start Time
+        endTime: '',   // End Time
         startDate: '',
         endDate: '',
         monthlyAmount: 0,
-        paymentStatus: 'Pending'
+        amount: 0, // Total Amount per booking/month? Let's treat monthlyAmount as Total
+        advancePaid: 0,
+        discount: 0,
+        discountType: 'NONE', // NONE, FLAT, PERCENT
+        paymentStatus: 'PENDING'
     });
+
+    const [balance, setBalance] = useState(0);
+
+    // Calculate Balance Effect
+    useEffect(() => {
+        let total = Number(formData.monthlyAmount) || 0;
+        let discount = Number(formData.discount) || 0;
+        let advance = Number(formData.advancePaid) || 0;
+
+        let finalTotal = total;
+        if (formData.discountType === 'FLAT') {
+            finalTotal = total - discount;
+        } else if (formData.discountType === 'PERCENT') {
+            finalTotal = total - (total * discount / 100);
+        }
+
+        setBalance(Math.max(0, finalTotal - advance));
+    }, [formData.monthlyAmount, formData.advancePaid, formData.discount, formData.discountType]);
+
 
     // Handlers
     const handleClose = () => {
         setShowModal(false);
         setEditingBooking(null);
+        resetForm();
+    };
+
+    const resetForm = () => {
         setFormData({
             customerName: '',
             phone: '',
-            court: 'Football',
-            recurrenceType: 'Weekly',
+            courtId: courts.length > 0 ? courts[0]._id : '',
+            sport: courts.length > 0 ? courts[0].sportType : '',
+            recurrenceType: 'WEEKLY',
             fixedDays: [],
             fixedTime: '',
+            endTime: '',
             startDate: '',
             endDate: '',
             monthlyAmount: 0,
-            paymentStatus: 'Pending'
+            advancePaid: 0,
+            discount: 0,
+            discountType: 'NONE',
+            paymentStatus: 'PENDING'
         });
     };
 
     const handleShowAdd = () => {
         setEditingBooking(null);
-        setFormData({
-            customerName: '',
-            phone: '',
-            court: 'Football',
-            recurrenceType: 'Weekly',
-            fixedDays: [],
-            fixedTime: '',
-            startDate: '',
-            endDate: '',
-            monthlyAmount: 0,
-            paymentStatus: 'Pending'
-        });
+        resetForm();
+        // Set default court if available
+        if (courts.length > 0) {
+            setFormData(prev => ({
+                ...prev,
+                courtId: courts[0]._id,
+                sport: courts[0].sportType
+            }));
+        }
         setShowModal(true);
     };
 
@@ -121,18 +137,88 @@ const AdminRecurring = () => {
         setEditingBooking(booking);
         setFormData({
             customerName: booking.customerName,
-            phone: booking.phone,
-            court: booking.court,
+            phone: booking.customerPhone,
+            courtId: booking.courtId?._id || booking.courtId,
+            sport: booking.sportType,
             recurrenceType: booking.recurrenceType,
-            fixedDays: booking.fixedDays,
-            fixedTime: booking.fixedTime,
-            startDate: booking.startDate,
-            endDate: booking.endDate || '',
+            fixedDays: booking.daysOfWeek?.map(toFrontendDay) || [],
+            fixedTime: booking.startTime,
+            endTime: booking.endTime,
+            startDate: booking.startDate ? booking.startDate.split('T')[0] : '',
+            endDate: booking.endDate ? booking.endDate.split('T')[0] : '',
             monthlyAmount: booking.monthlyAmount,
+            advancePaid: booking.advancePaid || 0,
+            discount: booking.discountValue || 0,
+            discountType: booking.discountType || 'NONE',
             paymentStatus: booking.paymentStatus
         });
         setShowModal(true);
     };
+
+    const handleShowView = (booking) => {
+        setViewBooking(booking);
+        setShowViewModal(true);
+    }
+
+    const handleCourtChange = (e) => {
+        const courtId = e.target.value;
+        const court = courts.find(c => c._id === courtId);
+        setFormData(prev => ({
+            ...prev,
+            courtId,
+            sport: court ? court.sportType : ''
+        }));
+    }
+
+    // Auto-Calculate Price when Court, Time, or Days change
+    useEffect(() => {
+        // Require Start and End Date for calculation
+        if (!formData.courtId || !formData.fixedTime || !formData.endTime || !formData.startDate || !formData.endDate) return;
+
+        const court = courts.find(c => c._id === formData.courtId);
+        if (!court) return;
+
+        // Calculate Duration in Hours
+        const [startH, startM] = formData.fixedTime.split(':').map(Number);
+        const [endH, endM] = formData.endTime.split(':').map(Number);
+        const startTotal = startH * 60 + startM;
+        const endTotal = endH * 60 + endM;
+
+        let durationMinutes = endTotal - startTotal;
+        if (durationMinutes <= 0) return; // Invalid duration
+
+        const durationHours = durationMinutes / 60;
+        let totalPrice = 0;
+
+        // Valid court prices
+        const weekdayPrice = Number(court.weekdayPrice) || 0;
+        const weekendPrice = Number(court.weekendPrice) || 0;
+
+        if (formData.recurrenceType === 'WEEKLY' && formData.fixedDays.length > 0) {
+            const start = new Date(formData.startDate);
+            const end = new Date(formData.endDate);
+
+            // Iterate through every day in the range
+            for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+                // Get day name (Mon, Tue, ...)
+                const dayName = d.toLocaleDateString('en-US', { weekday: 'short' });
+
+                // Check if this booking day is selected
+                if (formData.fixedDays.includes(dayName)) {
+                    const isWeekend = dayName === 'Sat' || dayName === 'Sun';
+                    const hourlyRate = isWeekend ? weekendPrice : weekdayPrice;
+                    totalPrice += durationHours * hourlyRate;
+                }
+            }
+        }
+
+        setFormData(prev => ({
+            ...prev,
+            monthlyAmount: Math.round(totalPrice)
+        }));
+
+    }, [formData.courtId, formData.fixedTime, formData.endTime, formData.fixedDays, formData.recurrenceType, formData.startDate, formData.endDate, courts]);
+
 
     const handleDayToggle = (day) => {
         const currentDays = [...formData.fixedDays];
@@ -147,53 +233,61 @@ const AdminRecurring = () => {
         setFormData({ ...formData, fixedDays: currentDays });
     };
 
-    const handleSave = (e) => {
+    const handleSave = async (e) => {
         e.preventDefault();
 
-        if (formData.fixedDays.length === 0) {
+        if (formData.recurrenceType === 'WEEKLY' && formData.fixedDays.length === 0) {
             toast.error('Please select at least one day');
             return;
         }
 
-        // Validate 15-minute interval alignment
-        const [hours, minutes] = formData.fixedTime.split(':').map(Number);
-        if (minutes % 15 !== 0) {
-            toast.error('Start time must be in 15-minute intervals (e.g., 00, 15, 30, 45)');
-            return;
-        }
+        // Prepare Payload
+        const payload = {
+            customerName: formData.customerName,
+            customerPhone: formData.phone,
+            courtId: formData.courtId,
+            sportType: formData.sport,
+            recurrenceType: formData.recurrenceType, // WEEKLY
+            daysOfWeek: formData.fixedDays.map(toBackendDay),
+            startTime: formData.fixedTime,
+            endTime: formData.endTime,
+            startDate: formData.startDate,
+            endDate: formData.endDate || null,
+            monthlyAmount: Number(formData.monthlyAmount),
+            advancePaid: Number(formData.advancePaid),
+            discountValue: Number(formData.discount),
+            discountType: Number(formData.discount) > 0 ? (formData.discountType === 'NONE' ? 'FLAT' : formData.discountType) : 'NONE',
+            paymentStatus: formData.paymentStatus
+        };
 
-        if (editingBooking) {
-            // Edit Logic
-            const updatedList = recurringBookings.map(b =>
-                b.id === editingBooking.id
-                    ? { ...b, ...formData, status: editingBooking.status }
-                    : b
-            );
-            setRecurringBookings(updatedList);
-            toast.success('Recurring booking updated successfully');
-        } else {
-            // Add Logic
-            const newBooking = {
-                id: Date.now(),
-                ...formData,
-                status: 'Active'
-            };
-            setRecurringBookings([...recurringBookings, newBooking]);
-            toast.success('Recurring booking created successfully');
+        try {
+            if (editingBooking) {
+                // Update
+                await api.put(`/recurring-bookings/${editingBooking._id}`, payload);
+                toast.success('Recurring booking updated successfully');
+            } else {
+                // Create
+                await api.post('/recurring-bookings', payload);
+                toast.success('Recurring booking created successfully');
+            }
+            fetchRecurringBookings();
+            handleClose();
+        } catch (error) {
+            console.error(error);
+            toast.error(error.response?.data?.message || 'Operation failed');
         }
-        handleClose();
     };
 
-    const togglePauseResume = (id) => {
-        const updatedList = recurringBookings.map(b => {
-            if (b.id === id) {
-                const newStatus = b.status === 'Active' ? 'Paused' : 'Active';
-                toast.success(`Booking ${newStatus === 'Paused' ? 'paused' : 'resumed'}`);
-                return { ...b, status: newStatus };
-            }
-            return b;
-        });
-        setRecurringBookings(updatedList);
+    const togglePauseResume = async (booking) => {
+        try {
+            const newStatus = booking.status === 'ACTIVE' ? 'PAUSED' : 'ACTIVE';
+            await api.patch(`/recurring-bookings/${booking._id}/status`, { status: newStatus });
+            toast.success(`Booking ${newStatus === 'PAUSED' ? 'paused' : 'resumed'}`);
+            fetchRecurringBookings();
+        } catch (error) {
+            console.error(error);
+            toast.error('Failed to update status');
+        }
     };
 
     const handleShowDelete = (booking) => {
@@ -201,11 +295,33 @@ const AdminRecurring = () => {
         setShowDeleteModal(true);
     };
 
-    const confirmDelete = () => {
-        setRecurringBookings(recurringBookings.filter(b => b.id !== bookingToDelete.id));
-        toast.success('Recurring booking deleted successfully');
-        setShowDeleteModal(false);
-        setBookingToDelete(null);
+    const confirmDelete = async () => {
+        try {
+            await api.delete(`/recurring-bookings/${bookingToDelete._id}`);
+            toast.success('Recurring booking deleted successfully');
+            setShowDeleteModal(false);
+            setBookingToDelete(null);
+            fetchRecurringBookings();
+        } catch (error) {
+            console.error(error);
+            toast.error('Failed to delete booking');
+        }
+    };
+
+    // Calculate Due Balance for a booking object (Helpers)
+    const getBalance = (booking) => {
+        const total = booking.monthlyAmount || 0;
+        const advance = booking.advancePaid || 0;
+        const discountType = booking.discountType || 'NONE';
+        const discountValue = booking.discountValue || 0;
+
+        let finalTotal = total;
+        if (discountType === 'FLAT') {
+            finalTotal = total - discountValue;
+        } else if (discountType === 'PERCENT') {
+            finalTotal = total - (total * discountValue / 100);
+        }
+        return Math.max(0, finalTotal - advance);
     };
 
     return (
@@ -230,9 +346,8 @@ const AdminRecurring = () => {
                             <th>Phone Number</th>
                             <th>Court</th>
                             <th>Recurrence</th>
-                            <th>Fixed Day(s)</th>
-                            <th>Fixed Time</th>
-                            <th>Monthly Amount</th>
+                            <th>Time Slot</th>
+                            <th>Total Amount</th>
                             <th>Payment Status</th>
                             <th>Status</th>
                             <th>Actions</th>
@@ -240,44 +355,45 @@ const AdminRecurring = () => {
                     </thead>
                     <tbody>
                         {recurringBookings.map((booking) => (
-                            <tr key={booking.id} className={booking.status === 'Paused' ? 'paused' : ''}>
+                            <tr key={booking._id} className={booking.status === 'PAUSED' ? 'paused' : ''}>
                                 <td>
                                     <div className="fw-bold">{booking.customerName}</div>
                                 </td>
-                                <td>{booking.phone}</td>
+                                <td>{booking.customerPhone}</td>
                                 <td>
                                     <Badge bg="light" text="dark" className="border">
-                                        {booking.court}
+                                        {booking.courtId?.name || 'Unknown'}
                                     </Badge>
+                                    {/* <div className="small text-muted">{booking.sportType}</div> */}
                                 </td>
                                 <td>
                                     <span className="adminrecurring-recurrence-badge">
                                         {booking.recurrenceType}
                                     </span>
                                 </td>
-                                <td>
-                                    <div className="adminrecurring-days">
-                                        {booking.fixedDays.map(day => (
-                                            <span key={day} className="adminrecurring-day-badge">
-                                                {day}
-                                            </span>
-                                        ))}
-                                    </div>
+                                <td className="fw-bold">{booking.startTime} - {booking.endTime}</td>
+                                <td className="fw-bold text-success">
+                                    ₹ {booking.monthlyAmount}
                                 </td>
-                                <td className="fw-bold">{booking.fixedTime}</td>
-                                <td className="fw-bold text-success">₹ {booking.monthlyAmount}</td>
                                 <td>
-                                    <span className={`adminrecurring-badge ${booking.paymentStatus === 'Paid' ? 'adminrecurring-badge-paid' : 'adminrecurring-badge-pending'}`}>
+                                    <span className={`adminrecurring-badge ${booking.paymentStatus === 'PAID' ? 'adminrecurring-badge-paid' : 'adminrecurring-badge-pending'}`}>
                                         {booking.paymentStatus}
                                     </span>
                                 </td>
                                 <td>
-                                    <span className={`adminrecurring-badge ${booking.status === 'Active' ? 'adminrecurring-badge-active' : 'adminrecurring-badge-paused'}`}>
+                                    <span className={`adminrecurring-badge ${booking.status === 'ACTIVE' ? 'adminrecurring-badge-active' : 'adminrecurring-badge-paused'}`}>
                                         {booking.status}
                                     </span>
                                 </td>
                                 <td>
                                     <div className="d-flex">
+                                        <button
+                                            className="adminrecurring-action-btn view"
+                                            title="View Details"
+                                            onClick={() => handleShowView(booking)}
+                                        >
+                                            <FaEye />
+                                        </button>
                                         <button
                                             className="adminrecurring-action-btn edit"
                                             title="Edit"
@@ -286,11 +402,11 @@ const AdminRecurring = () => {
                                             <FaEdit />
                                         </button>
 
-                                        {booking.status === 'Active' ? (
+                                        {booking.status === 'ACTIVE' ? (
                                             <button
                                                 className="adminrecurring-action-btn pause"
                                                 title="Pause"
-                                                onClick={() => togglePauseResume(booking.id)}
+                                                onClick={() => togglePauseResume(booking)}
                                             >
                                                 <FaPause />
                                             </button>
@@ -298,7 +414,7 @@ const AdminRecurring = () => {
                                             <button
                                                 className="adminrecurring-action-btn play"
                                                 title="Resume"
-                                                onClick={() => togglePauseResume(booking.id)}
+                                                onClick={() => togglePauseResume(booking)}
                                             >
                                                 <FaPlay />
                                             </button>
@@ -315,10 +431,17 @@ const AdminRecurring = () => {
                                 </td>
                             </tr>
                         ))}
-                        {recurringBookings.length === 0 && (
+                        {recurringBookings.length === 0 && !loading && (
                             <tr>
-                                <td colSpan="10" className="text-center py-4 text-muted">
+                                <td colSpan="9" className="text-center py-4 text-muted">
                                     No recurring bookings found. Add one to get started.
+                                </td>
+                            </tr>
+                        )}
+                        {loading && (
+                            <tr>
+                                <td colSpan="9" className="text-center py-4 text-muted">
+                                    Loading...
                                 </td>
                             </tr>
                         )}
@@ -335,6 +458,7 @@ const AdminRecurring = () => {
                 </Modal.Header>
                 <Form onSubmit={handleSave}>
                     <Modal.Body className="p-4">
+                        {/* ... Existing Modal Content ... */}
                         <div className="row g-3 mb-3">
                             <div className="col-md-6">
                                 <Form.Label className="adminrecurring-form-label">
@@ -356,7 +480,6 @@ const AdminRecurring = () => {
                                     type="tel"
                                     placeholder="10-digit mobile number"
                                     required
-                                    pattern="[0-9]{10}"
                                     value={formData.phone}
                                     onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
                                 />
@@ -367,22 +490,34 @@ const AdminRecurring = () => {
                             <div className="col-md-6">
                                 <Form.Label className="adminrecurring-form-label">Court</Form.Label>
                                 <Form.Select
-                                    value={formData.court}
-                                    onChange={(e) => setFormData({ ...formData, court: e.target.value })}
+                                    value={formData.courtId}
+                                    onChange={handleCourtChange}
                                 >
+                                    <option value="" disabled>Select Court</option>
                                     {courts.map(court => (
-                                        <option key={court} value={court}>{court}</option>
+                                        <option key={court._id} value={court._id}>{court.name}</option>
                                     ))}
                                 </Form.Select>
                             </div>
+                            <div className="col-md-6">
+                                <Form.Label className="adminrecurring-form-label">Sport</Form.Label>
+                                <Form.Control
+                                    type="text"
+                                    value={formData.sport}
+                                    readOnly
+                                    className="bg-light"
+                                />
+                            </div>
+                        </div>
+
+                        <div className="row g-3 mb-3">
                             <div className="col-md-6">
                                 <Form.Label className="adminrecurring-form-label">Recurrence Type</Form.Label>
                                 <Form.Select
                                     value={formData.recurrenceType}
                                     onChange={(e) => setFormData({ ...formData, recurrenceType: e.target.value })}
                                 >
-                                    <option value="Weekly">Weekly</option>
-                                    <option value="Monthly">Monthly</option>
+                                    <option value="WEEKLY">Weekly</option>
                                 </Form.Select>
                             </div>
                         </div>
@@ -410,19 +545,29 @@ const AdminRecurring = () => {
                         </Form.Group>
 
                         <div className="row g-3 mb-3">
-                            <div className="col-md-4">
+                            <div className="col-md-3">
                                 <Form.Label className="adminrecurring-form-label">
-                                    Fixed Time <span className="text-danger">*</span>
+                                    Start Time <span className="text-danger">*</span>
                                 </Form.Label>
                                 <Form.Control
                                     type="time"
                                     required
-                                    step="900"
                                     value={formData.fixedTime}
                                     onChange={(e) => setFormData({ ...formData, fixedTime: e.target.value })}
                                 />
                             </div>
-                            <div className="col-md-4">
+                            <div className="col-md-3">
+                                <Form.Label className="adminrecurring-form-label">
+                                    End Time <span className="text-danger">*</span>
+                                </Form.Label>
+                                <Form.Control
+                                    type="time"
+                                    required
+                                    value={formData.endTime}
+                                    onChange={(e) => setFormData({ ...formData, endTime: e.target.value })}
+                                />
+                            </div>
+                            <div className="col-md-3">
                                 <Form.Label className="adminrecurring-form-label">
                                     Start Date <span className="text-danger">*</span>
                                 </Form.Label>
@@ -433,8 +578,8 @@ const AdminRecurring = () => {
                                     onChange={(e) => setFormData({ ...formData, startDate: e.target.value })}
                                 />
                             </div>
-                            <div className="col-md-4">
-                                <Form.Label className="adminrecurring-form-label">End Date (Optional)</Form.Label>
+                            <div className="col-md-3">
+                                <Form.Label className="adminrecurring-form-label">End Date</Form.Label>
                                 <Form.Control
                                     type="date"
                                     value={formData.endDate}
@@ -443,10 +588,13 @@ const AdminRecurring = () => {
                             </div>
                         </div>
 
+                        <hr className="my-4" />
+                        <h6 className="mb-3 text-primary">Payment Details</h6>
+
                         <div className="row g-3 mb-3">
-                            <div className="col-md-6">
+                            <div className="col-md-4">
                                 <Form.Label className="adminrecurring-form-label">
-                                    Monthly Amount <span className="text-danger">*</span>
+                                    Total Amount <span className="text-danger">*</span>
                                 </Form.Label>
                                 <InputGroup>
                                     <InputGroup.Text><FaRupeeSign size={12} /></InputGroup.Text>
@@ -460,17 +608,68 @@ const AdminRecurring = () => {
                                     />
                                 </InputGroup>
                             </div>
+                            <div className="col-md-4">
+                                <Form.Label className="adminrecurring-form-label">
+                                    Discount
+                                </Form.Label>
+                                <div className="d-flex gap-2">
+                                    <Form.Control
+                                        type="number"
+                                        placeholder="Discount"
+                                        min="0"
+                                        value={formData.discount}
+                                        onChange={(e) => setFormData({ ...formData, discount: e.target.value })}
+                                    />
+                                    <Form.Select
+                                        style={{ width: '90px' }}
+                                        value={formData.discountType}
+                                        onChange={(e) => setFormData({ ...formData, discountType: e.target.value })}
+                                    >
+                                        <option value="NONE">None</option>
+                                        <option value="FLAT">Flat</option>
+                                        <option value="PERCENT">%</option>
+                                    </Form.Select>
+                                </div>
+                            </div>
+                            <div className="col-md-4">
+                                <Form.Label className="adminrecurring-form-label">
+                                    Advance Paid
+                                </Form.Label>
+                                <InputGroup>
+                                    <InputGroup.Text><FaRupeeSign size={12} /></InputGroup.Text>
+                                    <Form.Control
+                                        type="number"
+                                        placeholder="0.00"
+                                        min="0"
+                                        value={formData.advancePaid}
+                                        onChange={(e) => setFormData({ ...formData, advancePaid: e.target.value })}
+                                    />
+                                </InputGroup>
+                            </div>
+                        </div>
+
+                        <div className="row g-3 mb-3 align-items-end">
                             <div className="col-md-6">
                                 <Form.Label className="adminrecurring-form-label">Payment Status</Form.Label>
                                 <Form.Select
                                     value={formData.paymentStatus}
                                     onChange={(e) => setFormData({ ...formData, paymentStatus: e.target.value })}
                                 >
-                                    <option value="Paid">Paid</option>
-                                    <option value="Pending">Pending</option>
+                                    <option value="PENDING">Pending</option>
+                                    <option value="PAID">Paid</option>
+                                    <option value="PARTIAL">Partial</option>
                                 </Form.Select>
                             </div>
+                            <div className="col-md-6 text-end">
+                                <div className="bg-light p-2 rounded border">
+                                    <span className="text-muted small me-2">Remaining Balance:</span>
+                                    <span className={`fw-bold fs-5 ${balance > 0 ? 'text-danger' : 'text-success'}`}>
+                                        ₹ {balance.toFixed(2)}
+                                    </span>
+                                </div>
+                            </div>
                         </div>
+
                     </Modal.Body>
                     <Modal.Footer className="adminrecurring-modal-footer">
                         <Button variant="light" onClick={handleClose}>Cancel</Button>
@@ -479,6 +678,102 @@ const AdminRecurring = () => {
                         </Button>
                     </Modal.Footer>
                 </Form>
+            </Modal>
+
+            {/* View Details Modal */}
+            <Modal show={showViewModal} onHide={() => setShowViewModal(false)} centered size="lg">
+                <Modal.Header closeButton className="adminrecurring-modal-header">
+                    <Modal.Title className="fw-bold">Booking Details</Modal.Title>
+                </Modal.Header>
+                <Modal.Body className="p-4">
+                    {viewBooking && (
+                        <div>
+                            <div className="row mb-4">
+                                <div className="col-md-6">
+                                    <h6 className="text-muted small text-uppercase">Customer Info</h6>
+                                    <div className="fw-bold fs-5">{viewBooking.customerName}</div>
+                                    <div className="text-muted">{viewBooking.customerPhone}</div>
+                                </div>
+                                <div className="col-md-6 text-end">
+                                    <Badge bg={viewBooking.status === 'ACTIVE' ? 'success' : 'danger'}>
+                                        {viewBooking.status}
+                                    </Badge>
+                                </div>
+                            </div>
+
+                            <hr className="text-muted opacity-25" />
+
+                            <div className="row gy-4">
+                                <div className="col-md-4">
+                                    <label className="text-muted small d-block">Court Details</label>
+                                    <div className="fw-bold">{viewBooking.courtId?.name || 'Unknown'}</div>
+                                    <div className="small text-muted">{viewBooking.sportType}</div>
+                                </div>
+                                <div className="col-md-4">
+                                    <label className="text-muted small d-block">Time Slot</label>
+                                    <div className="fw-bold">{viewBooking.startTime} - {viewBooking.endTime}</div>
+                                </div>
+                                <div className="col-md-4">
+                                    <label className="text-muted small d-block">Recurrence</label>
+                                    <div className="fw-bold mb-1">{viewBooking.recurrenceType}</div>
+                                    <div className="d-flex gap-1 flex-wrap">
+                                        {viewBooking.daysOfWeek?.map(toFrontendDay).map(day => (
+                                            <Badge key={day} bg="secondary" className="fw-normal">
+                                                {day}
+                                            </Badge>
+                                        ))}
+                                    </div>
+                                </div>
+                                <div className="col-md-4">
+                                    <label className="text-muted small d-block">Start Date</label>
+                                    <div className="fw-bold">{new Date(viewBooking.startDate).toLocaleDateString()}</div>
+                                </div>
+                                <div className="col-md-4">
+                                    <label className="text-muted small d-block">End Date</label>
+                                    <div className="fw-bold">
+                                        {viewBooking.endDate ? new Date(viewBooking.endDate).toLocaleDateString() : 'Ongoing'}
+                                    </div>
+                                </div>
+                            </div>
+
+                            <hr className="text-muted opacity-25" />
+                            <h6 className="text-primary mb-3">Financials</h6>
+
+                            <div className="row gy-3">
+                                <div className="col-md-3">
+                                    <label className="text-muted small d-block">Total Amount</label>
+                                    <div className="fw-bold">₹ {viewBooking.monthlyAmount}</div>
+                                </div>
+                                <div className="col-md-3">
+                                    <label className="text-muted small d-block">Discount</label>
+                                    <div className="fw-bold">
+                                        {viewBooking.discountValue > 0 ? (
+                                            `₹ ${viewBooking.discountValue} (${viewBooking.discountType})`
+                                        ) : 'None'}
+                                    </div>
+                                </div>
+                                <div className="col-md-3">
+                                    <label className="text-muted small d-block">Advance Paid</label>
+                                    <div className="fw-bold text-success">₹ {viewBooking.advancePaid || 0}</div>
+                                </div>
+                                <div className="col-md-3">
+                                    <label className="text-muted small d-block">Due Payment</label>
+                                    <div className="fw-bold text-danger">₹ {getBalance(viewBooking).toFixed(2)}</div>
+                                </div>
+                                <div className="col-md-12 mt-3">
+                                    <label className="text-muted small me-2">Payment Status:</label>
+                                    <span className={`adminrecurring-badge ${viewBooking.paymentStatus === 'PAID' ? 'adminrecurring-badge-paid' : 'adminrecurring-badge-pending'}`}>
+                                        {viewBooking.paymentStatus}
+                                    </span>
+                                </div>
+                            </div>
+
+                        </div>
+                    )}
+                </Modal.Body>
+                <Modal.Footer>
+                    <Button variant="secondary" onClick={() => setShowViewModal(false)}>Close</Button>
+                </Modal.Footer>
             </Modal>
 
             {/* Delete Confirmation Modal */}

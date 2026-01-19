@@ -6,6 +6,8 @@ const { generateSlots } = require('../services/slotGenerator.service');
 const { calculatePrice } = require('../services/pricing.service');
 const mongoose = require('mongoose');
 
+const { createSingleBooking } = require('../services/bookingCore.service');
+
 // @desc    Create new booking
 // @route   POST /api/admin/bookings
 // @access  Private (Admin only)
@@ -14,116 +16,10 @@ const createBooking = async (req, res) => {
     session.startTransaction();
 
     try {
-        const {
-            customerName,
-            customerPhone,
-            sportType,
-            courtId,
-            bookingDate,
-            startTime,
-            endTime,
-            discountType,
-            discountValue,
-            advancePaid,
-            paymentMode,
-            paymentNotes
-        } = req.body;
-
-        // 1. Validate Court
-        const court = await Court.findById(courtId);
-        if (!court) {
-            throw new Error('Court not found');
-        }
-        if (court.status !== 'ACTIVE') {
-            throw new Error('Court is not active');
-        }
-
-        // 2. Generate Slots
-        const slots = generateSlots(startTime, endTime);
-        if (slots.length === 0) {
-            throw new Error('Invalid time range');
-        }
-
-        // 3. Check Slot Availability (Double Double Check)
-        // We use the unique index in DB as safety, but checking here gives better error msg
-        // 3. Check Slot Availability (Double Double Check)
-        // We use the unique index in DB as safety, but checking here gives better error msg
-        const rawConflicts = await BookingSlot.find({
-            courtId,
-            bookingDate: new Date(bookingDate),
-            slotTime: { $in: slots }
-        }).populate('bookingId').session(session);
-
-        const activeConflicts = rawConflicts.filter(slot =>
-            slot.bookingId && slot.bookingId.status === 'BOOKED'
-        );
-
-        if (activeConflicts.length > 0) {
-            const takenTimes = [...new Set(activeConflicts.map(s => s.slotTime))].join(', ');
-            return res.status(409).json({ message: `Slots already booked: ${takenTimes}` });
-        }
-
-        // --- CRITICAL FIX: Clean up "Zombie" slots ---
-        // If we are here, it means any existing slots in rawConflicts belong to CANCELLED/COMPLETED bookings.
-        // We MUST delete them to avoid Unique Index (11000) errors during insertion.
-        if (rawConflicts.length > 0) {
-            const zombieIds = rawConflicts.map(s => s._id);
-            await BookingSlot.deleteMany({ _id: { $in: zombieIds } }).session(session);
-        }
-
-        // 4. Calculate Pricing
-        const baseAmount = calculatePrice(court, slots.length, new Date(bookingDate));
-        let finalAmount = baseAmount;
-
-        if (discountType === 'PERCENT') {
-            finalAmount -= (baseAmount * (discountValue || 0)) / 100;
-        } else if (discountType === 'FLAT') {
-            finalAmount -= (discountValue || 0);
-        }
-
-        if (advancePaid > finalAmount) {
-            throw new Error('Advance cannot be more than final amount');
-        }
-
-        // 5. Create Booking
-        const booking = await Booking.create([{
-            customerName,
-            customerPhone,
-            sportType,
-            courtId,
-            bookingDate: new Date(bookingDate),
-            startTime,
-            endTime,
-            totalSlots: slots.length,
-            baseAmount,
-            discountType,
-            discountValue,
-            finalAmount,
-            createdBy: req.user._id,
-            status: 'BOOKED'
-        }], { session });
-
-        // 6. Create Slots
-        const bookingSlots = slots.map(time => ({
-            bookingId: booking[0]._id,
-            courtId,
-            bookingDate: new Date(bookingDate),
-            slotTime: time
-        }));
-
-        await BookingSlot.insertMany(bookingSlots, { session });
-
-        // 7. Create Payment
-        await Payment.create([{
-            bookingId: booking[0]._id,
-            totalAmount: finalAmount,
-            advancePaid: advancePaid || 0,
-            balanceAmount: finalAmount - (advancePaid || 0),
-            paymentMode: paymentMode || 'CASH',
-            paymentNotes,
-            status: (advancePaid || 0) <= 0 ? 'PENDING' :
-                (advancePaid || 0) >= finalAmount ? 'PAID' : 'PARTIAL'
-        }], { session });
+        const booking = await createSingleBooking({
+            ...req.body,
+            createdBy: req.user._id
+        }, session);
 
         await session.commitTransaction();
         session.endSession();
@@ -131,13 +27,16 @@ const createBooking = async (req, res) => {
         res.status(201).json({
             success: true,
             message: 'Booking created successfully',
-            bookingId: booking[0]._id
+            bookingId: booking._id
         });
 
     } catch (error) {
         await session.abortTransaction();
         session.endSession();
         console.error(error);
+        if (error.message.includes('Slots already booked')) {
+            return res.status(409).json({ message: error.message });
+        }
         if (error.code === 11000) {
             return res.status(409).json({ message: 'Slot already booked (Race Condition Detected)' });
         }
