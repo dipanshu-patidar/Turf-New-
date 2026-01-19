@@ -1,0 +1,150 @@
+/* Admin Courts Page Styles */
+
+.admincourts-container {
+    padding: 1.5rem;
+    background-color: #fff;
+    min-height: 100%;
+}
+
+.admincourts-page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid #e9ecef;
+}
+
+.admincourts-title {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #212529;
+    margin: 0;
+}
+
+.admincourts-btn-primary {
+    background-color: #E63946;
+    /* Matching theme color */
+    border: none;
+    padding: 0.6rem 1.2rem;
+    color: #fff;
+    font-weight: 600;
+    border-radius: 8px;
+    transition: all 0.2s;
+}
+
+.admincourts-btn-primary:hover {
+    background-color: #d62839;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 6px rgba(230, 57, 70, 0.2);
+}
+
+/* Table Styles */
+.admincourts-table-container {
+    background: #fff;
+    border-radius: 10px;
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.04);
+    overflow-x: auto;
+    border: 1px solid #f1f3f5;
+    margin-bottom: 1.5rem;
+}
+
+.admincourts-table {
+    margin-bottom: 0;
+    width: 100%;
+    min-width: 800px;
+}
+
+.admincourts-table thead th {
+    background-color: #f8f9fa;
+    color: #495057;
+    font-weight: 600;
+    text-transform: uppercase;
+    font-size: 0.75rem;
+    letter-spacing: 0.5px;
+    padding: 1rem;
+    border-bottom: 2px solid #e9ecef;
+    white-space: nowrap;
+}
+
+.admincourts-table tbody td {
+    padding: 1rem;
+    vertical-align: middle;
+    color: #212529;
+    background-color: #fff;
+    border-bottom: 1px solid #f1f3f5;
+    font-size: 0.9rem;
+}
+
+.admincourts-table tbody tr:hover td {
+    background-color: #f8f9fa;
+}
+
+/* Status Badges */
+.admincourts-badge {
+    padding: 0.4em 0.8em;
+    border-radius: 20px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    display: inline-block;
+}
+
+.admincourts-badge-active {
+    background-color: #d1e7dd;
+    color: #0f5132;
+}
+
+.admincourts-badge-inactive {
+    background-color: #f8d7da;
+    color: #842029;
+}
+
+/* Action Buttons */
+.admincourts-action-btn {
+    border: none;
+    background: transparent;
+    padding: 0.4rem;
+    border-radius: 4px;
+    margin-right: 0.25rem;
+    transition: background-color 0.2s;
+    color: #6c757d;
+}
+
+.admincourts-action-btn:hover {
+    background-color: #e9ecef;
+    color: #212529;
+}
+
+.admincourts-action-btn.edit:hover {
+    color: #0d6efd;
+    background-color: #cfe2ff;
+}
+
+.admincourts-action-btn.delete:hover {
+    color: #dc3545;
+    background-color: #f8d7da;
+}
+
+.admincourts-action-btn.activate:hover {
+    color: #198754;
+    background-color: #d1e7dd;
+}
+
+/* Modal Customization */
+.admincourts-modal-header {
+    background-color: #f8f9fa;
+    border-bottom: 1px solid #dee2e6;
+}
+
+.admincourts-modal-footer {
+    border-top: 1px solid #dee2e6;
+    background-color: #f8f9fa;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .admincourts-table-container {
+        overflow-x: auto;
+    }
+}

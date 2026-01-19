@@ -1,0 +1,151 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+
+:root {
+    --bs-font-sans-serif: 'Inter', system-ui, -apple-system, sans-serif;
+    --primary-color: #E63946;
+    /* Vibrant Red */
+    --secondary-bg: #FFE5E7;
+    --dark-bg: #1A1A1A;
+    /* Softer Dark for Sidebar */
+    --sidebar-width: 260px;
+    --sidebar-collapsed-width: 80px;
+}
+
+body {
+    background-color: #f7f9fc;
+    /* Very light cool gray */
+    font-family: var(--bs-font-sans-serif);
+    overflow-x: hidden;
+}    
+
+/* --- Typography & Colors --- */
+.text-primary {
+    color: var(--primary-color) !important;
+}
+
+.bg-primary {
+    background-color: var(--primary-color) !important;
+}
+
+.btn-primary {
+    background-color: var(--primary-color);
+    border-color: var(--primary-color);
+    transition: all 0.2s ease-in-out;
+}
+
+.btn-primary:hover {
+    background-color: #d62839;
+    border-color: #d62839;  
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(230, 57, 70, 0.3);
+}
+
+/* --- UI Enhancements --- */
+
+/* Premium Shadows */
+.shadow-soft {
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+}
+
+.shadow-hover:hover {
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+}
+
+.shadow-card {
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+    border: 1px solid rgba(0, 0, 0, 0.04);
+}
+
+.icon-shadow {
+    filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.3));
+}
+
+/* Sidebar Styling */
+.sidebar-wrapper {
+    background: linear-gradient(180deg, #1e2024 0%, #17191d 100%);
+    box-shadow: 4px 0 24px rgba(0, 0, 0, 0.08);
+    border-right: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.nav-link-custom {
+    color: #a0aec0;
+    transition: all 0.2s ease;
+    border-radius: 8px;
+    margin-bottom: 4px;
+    font-weight: 500;
+}
+
+.nav-link-custom:hover {
+    color: #fff;
+    background-color: rgba(255, 255, 255, 0.05);
+    transform: translateX(4px);
+}
+
+.nav-link-custom.active {
+    background: linear-gradient(90deg, var(--primary-color) 0%, rgba(230, 57, 70, 0.8) 100%);
+    color: #fff;
+    box-shadow: 0 4px 12px rgba(230, 57, 70, 0.3);
+}
+
+/* Navbar Styling */
+.navbar-custom {
+    /* background: rgba(255, 255, 255, 0.95); */
+    background-color: #1e2024;
+    backdrop-filter: blur(10px);
+    border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.03);
+}
+
+/* Form Controls */
+.form-control-custom {
+    border-radius: 10px;
+    background-color: #fff;
+    border: 1px solid #e2e8f0;
+    padding: 0.75rem 1rem;
+    transition: all 0.2s;
+}
+
+.form-control-custom:focus {
+    box-shadow: 0 0 0 4px rgba(230, 57, 70, 0.1);
+    border-color: var(--primary-color);
+}
+
+/* Sidebar transitions */
+.sidebar-open {
+    width: var(--sidebar-width);
+}
+
+.sidebar-closed {
+    width: var(--sidebar-collapsed-width);
+}
+
+/* Hide on mobile when closed, if needed, but for now assuming desktop behavior requested */
+@media (max-width: 991.98px) {
+    .sidebar-closed {
+        width: 0px;
+    }
+}
+
+/* Scrollbar */
+::-webkit-scrollbar {
+    width: 6px;
+}
+
+::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+    background: #cbd5e0;
+    border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: #a0aec0;
+}
+
+.btn-check:checked+.btn, .btn.active, .btn.show, .btn:first-child:active, :not(.btn-check)+.btn:active{
+    color: #fff;
+    background: #212529;
+    border-color: #212529;
+}

@@ -1,0 +1,147 @@
+/* Staff Recurring Booking Styles */
+
+.staffrecurringbooking-container {
+    padding: 1.5rem;
+    background-color: #f8f9fa;
+    min-height: 100%;
+}
+
+.staffrecurringbooking-page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2rem;
+}
+
+.staffrecurringbooking-title {
+    font-size: 1.75rem;
+    font-weight: 700;
+    color: #212529;
+    margin: 0;
+}
+
+.staffrecurringbooking-card {
+    background: #fff;
+    border: none;
+    border-radius: 16px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+    overflow: hidden;
+}
+
+/* Table Styles */
+.staffrecurringbooking-table-responsive {
+    overflow-x: auto;
+}
+
+.staffrecurringbooking-table {
+    width: 100%;
+    margin-bottom: 0;
+    vertical-align: middle;
+}
+
+.staffrecurringbooking-table th {
+    background-color: #f8f9fa;
+    color: #495057;
+    font-weight: 600;
+    text-transform: uppercase;
+    font-size: 0.75rem;
+    letter-spacing: 0.5px;
+    padding: 1rem 1.5rem;
+    border-bottom: 1px solid #dee2e6;
+    white-space: nowrap;
+}
+
+.staffrecurringbooking-table td {
+    padding: 1rem 1.5rem;
+    vertical-align: middle;
+    color: #212529;
+    border-bottom: 1px solid #f1f3f5;
+    font-size: 0.9rem;
+}
+
+.staffrecurringbooking-table tr:last-child td {
+    border-bottom: none;
+}
+
+.staffrecurringbooking-table tr:hover {
+    background-color: #fafafa;
+}
+
+/* Status Badges */
+.staffrecurringbooking-badge {
+    padding: 0.35rem 0.75rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+    border-radius: 30px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.staffrecurringbooking-badge.active {
+    background-color: #d1e7dd;
+    color: #0f5132;
+}
+
+.staffrecurringbooking-badge.paused {
+    background-color: #fff3cd;
+    color: #664d03;
+}
+
+/* Action Buttons */
+.staffrecurringbooking-action-btn {
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 8px;
+    border: none;
+    background: transparent;
+    color: #6c757d;
+    transition: all 0.2s;
+}
+
+.staffrecurringbooking-action-btn:hover {
+    background-color: #f1f3f5;
+    color: #212529;
+}
+
+.staffrecurringbooking-action-btn.edit:hover {
+    color: #0d6efd;
+    background-color: #e7f3ff;
+}
+
+.staffrecurringbooking-action-btn.delete:hover {
+    color: #dc3545;
+    background-color: #f8d7da;
+}
+
+/* Modal Styles */
+.staffrecurringbooking-modal-header {
+    border-bottom: none;
+    padding-bottom: 0;
+}
+
+.staffrecurringbooking-modal-title {
+    font-weight: 700;
+    color: #212529;
+}
+
+.staffrecurringbooking-form-label {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #6c757d;
+    margin-bottom: 0.5rem;
+}
+
+.staffrecurringbooking-input {
+    border-radius: 8px;
+    padding: 0.6rem 0.75rem;
+    border: 1px solid #dee2e6;
+    font-size: 0.9rem;
+}
+
+.staffrecurringbooking-input:focus {
+    border-color: #0d6efd;
+    box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.15);
+}

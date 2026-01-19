@@ -1,0 +1,381 @@
+/* Admin Booking Calendar Styles */
+
+.adminbooking-container {
+    padding: 1.5rem;
+    background-color: #fff;
+    min-height: 100vh;
+}
+
+/* Header Section */
+.adminbooking-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.5rem;
+    padding-bottom: 1rem;
+    border-bottom: 2px solid #e9ecef;
+}
+
+.adminbooking-title {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #212529;
+    margin: 0;
+}
+
+/* Date Navigation */
+.adminbooking-date-nav {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 1rem;
+    background: #f8f9fa;
+    padding: 0.75rem 1.25rem;
+    border-radius: 8px;
+    margin-bottom: 1.5rem;
+    flex-wrap: wrap;
+}
+
+.adminbooking-date-display {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: #212529;
+    min-width: 250px;
+    text-align: center;
+    padding: 0.5rem 1rem;
+    background: #fff;
+    border-radius: 6px;
+    border: 1px solid #dee2e6;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.adminbooking-nav-btn {
+    background-color: #fff;
+    border: 1px solid #dee2e6;
+    padding: 0.5rem 1rem;
+    border-radius: 6px;
+    color: #495057;
+    font-weight: 500;
+    transition: all 0.2s;
+}
+
+.adminbooking-nav-btn:hover {
+    background-color: #E63946;
+    color: #fff;
+    border-color: #E63946;
+}
+
+.adminbooking-today-btn {
+    background-color: #E63946;
+    color: #fff;
+    border: none;
+    padding: 0.5rem 1.25rem;
+    border-radius: 6px;
+    font-weight: 600;
+}
+
+.adminbooking-today-btn:hover {
+    background-color: #d62839;
+}
+
+/* Calendar Grid */
+.adminbooking-calendar-wrapper {
+    overflow-x: auto;
+    background: #fff;
+    border-radius: 10px;
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.04);
+    border: 1px solid #e9ecef;
+}
+
+.adminbooking-calendar-grid {
+    display: grid;
+    grid-template-columns: 100px repeat(5, 1fr);
+    min-width: 1000px;
+}
+
+/* Time Column */
+.adminbooking-time-header,
+.adminbooking-time-cell {
+    background-color: #f8f9fa;
+    border-right: 2px solid #dee2e6;
+    border-bottom: 1px solid #e9ecef;
+    padding: 0.75rem;
+    font-weight: 600;
+    color: #495057;
+    text-align: center;
+    position: sticky;
+    left: 0;
+    z-index: 10;
+}
+
+.adminbooking-time-header {
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    border-bottom: 2px solid #dee2e6;
+}
+
+.adminbooking-time-cell {
+    font-size: 0.9rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 80px;
+}
+
+/* Court Headers */
+.adminbooking-court-header {
+    background: linear-gradient(135deg, #E63946 0%, #d62839 100%);
+    color: #fff;
+    padding: 1rem;
+    text-align: center;
+    font-weight: 700;
+    font-size: 0.95rem;
+    border-bottom: 2px solid #dee2e6;
+    border-right: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+/* Slot Cells */
+.adminbooking-slot-cell {
+    border-right: 1px solid #e9ecef;
+    border-bottom: 1px solid #e9ecef;
+    min-height: 80px;
+    padding: 0.5rem;
+    cursor: pointer;
+    transition: background-color 0.2s;
+    position: relative;
+}
+
+.adminbooking-slot-cell:hover {
+    background-color: #f8f9fa;
+}
+
+.adminbooking-slot-cell.empty {
+    background-color: #fff;
+}
+
+.adminbooking-slot-cell.booked {
+    background-color: transparent;
+    padding: 0;
+}
+
+/* Booking Card */
+.adminbooking-card {
+    background: #1e2024;
+    color: #fff;
+    padding: 0.75rem;
+    border-radius: 6px;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    cursor: pointer;
+    transition: transform 0.2s, box-shadow 0.2s;
+    min-height: 80px;
+}
+
+.adminbooking-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.adminbooking-card-customer {
+    font-weight: 700;
+    font-size: 0.95rem;
+    margin-bottom: 0.25rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.adminbooking-card-time {
+    font-size: 0.8rem;
+    opacity: 0.9;
+    margin-bottom: 0.5rem;
+}
+
+.adminbooking-card-phone {
+    font-size: 0.75rem;
+    opacity: 0.85;
+    margin-bottom: 0.5rem;
+}
+
+/* Payment Status Badges */
+.adminbooking-payment-badge {
+    display: inline-block;
+    padding: 0.25rem 0.6rem;
+    border-radius: 12px;
+    font-size: 0.7rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+}
+
+.adminbooking-payment-badge.paid {
+    background-color: #d1f2eb;
+    color: #0f5132;
+}
+
+.adminbooking-payment-badge.balance {
+    background-color: #fff3cd;
+    color: #856404;
+}
+
+.adminbooking-payment-badge.advance {
+    background-color: #f8d7da;
+    color: #842029;
+}
+
+/* Modal Styles */
+.adminbooking-modal-header {
+    background-color: #f8f9fa;
+    border-bottom: 1px solid #dee2e6;
+}
+
+.adminbooking-modal-footer {
+    background-color: #f8f9fa;
+    border-top: 1px solid #dee2e6;
+}
+
+.adminbooking-btn-primary {
+    background-color: #E63946;
+    border: none;
+    padding: 0.6rem 1.5rem;
+    color: #fff;
+    font-weight: 600;
+    border-radius: 6px;
+    transition: all 0.2s;
+}
+
+.adminbooking-btn-primary:hover {
+    background-color: #d62839;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 6px rgba(230, 57, 70, 0.2);
+}
+
+.adminbooking-form-label {
+    font-weight: 600;
+    color: #495057;
+    margin-bottom: 0.5rem;
+}
+
+.adminbooking-readonly-field {
+    background-color: #e9ecef;
+    cursor: not-allowed;
+}
+
+/* Price Display */
+.adminbooking-price-display {
+    background-color: #f8f9fa;
+    padding: 1rem;
+    border-radius: 6px;
+    margin-bottom: 1rem;
+}
+
+.adminbooking-price-row {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 0.5rem;
+    font-size: 0.95rem;
+}
+
+.adminbooking-price-row.total {
+    font-weight: 700;
+    font-size: 1.1rem;
+    padding-top: 0.5rem;
+    border-top: 2px solid #dee2e6;
+    margin-top: 0.5rem;
+}
+
+/* Responsive */
+@media (max-width: 1200px) {
+    .adminbooking-calendar-grid {
+        min-width: 900px;
+    }
+}
+
+@media (max-width: 992px) {
+    .adminbooking-container {
+        padding: 1rem;
+    }
+
+    .adminbooking-calendar-grid {
+        min-width: 800px;
+    }
+
+    .adminbooking-time-cell {
+        min-height: 70px;
+        font-size: 0.85rem;
+    }
+
+    .adminbooking-slot-cell {
+        min-height: 70px;
+    }
+}
+
+@media (max-width: 768px) {
+    .adminbooking-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 1rem;
+    }
+
+    .adminbooking-date-nav {
+        flex-wrap: wrap;
+        justify-content: center;
+        padding: 0.5rem;
+    }
+
+    .adminbooking-date-display {
+        min-width: 100%;
+        order: -1;
+        margin-bottom: 0.5rem;
+    }
+
+    .adminbooking-nav-btn,
+    .adminbooking-today-btn {
+        flex: 1;
+        min-width: 100px;
+    }
+
+    .adminbooking-calendar-grid {
+        min-width: 700px;
+    }
+
+    .adminbooking-court-header {
+        font-size: 0.85rem;
+        padding: 0.75rem 0.5rem;
+    }
+
+    .adminbooking-card {
+        padding: 0.5rem;
+    }
+
+    .adminbooking-card-customer {
+        font-size: 0.85rem;
+    }
+
+    .adminbooking-card-time,
+    .adminbooking-card-phone {
+        font-size: 0.7rem;
+    }
+}
+
+@media (max-width: 576px) {
+    .adminbooking-title {
+        font-size: 1.25rem;
+    }
+
+    .adminbooking-date-display {
+        font-size: 0.95rem;
+        min-width: 100%;
+    }
+
+    .adminbooking-nav-btn,
+    .adminbooking-today-btn {
+        font-size: 0.85rem;
+        padding: 0.4rem 0.8rem;
+    }
+}

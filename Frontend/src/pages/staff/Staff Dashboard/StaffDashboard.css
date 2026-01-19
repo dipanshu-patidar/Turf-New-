@@ -1,0 +1,158 @@
+/* Staff Dashboard Styles */
+
+.staffdashboard-container {
+    padding: 1.5rem;
+    background-color: #f8f9fa;
+    min-height: 100%;
+}
+
+.staffdashboard-page-header {
+    margin-bottom: 2rem;
+}
+
+.staffdashboard-title {
+    font-size: 1.75rem;
+    font-weight: 700;
+    color: #212529;
+    margin: 0;
+}
+
+/* Summary Cards */
+.staffdashboard-summary-row {
+    margin-bottom: 2rem;
+}
+
+.staffdashboard-card {
+    border: none;
+    border-radius: 16px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    height: 100%;
+    overflow: hidden;
+    position: relative;
+    background: #fff;
+}
+
+.staffdashboard-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.1);
+}
+
+.staffdashboard-card-body {
+    padding: 1.5rem;
+    display: flex;
+    align-items: center;
+}
+
+.staffdashboard-icon-wrapper {
+    width: 60px;
+    height: 60px;
+    border-radius: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-right: 1.25rem;
+    font-size: 1.5rem;
+}
+
+/* Card Themes (Neutral colors as requested) */
+.staffdashboard-theme-blue .staffdashboard-icon-wrapper {
+    background-color: #e7f3ff;
+    color: #0d6efd;
+}
+
+.staffdashboard-theme-green .staffdashboard-icon-wrapper {
+    background-color: #d1e7dd;
+    color: #198754;
+}
+
+.staffdashboard-theme-orange .staffdashboard-icon-wrapper {
+    background-color: #fff3cd;
+    color: #ffc107;
+}
+
+.staffdashboard-theme-purple .staffdashboard-icon-wrapper {
+    background-color: #f3e5f5;
+    color: #7b1fa2;
+}
+
+.staffdashboard-card-info h3 {
+    font-size: 1.85rem;
+    font-weight: 800;
+    margin: 0;
+    color: #212529;
+    line-height: 1.2;
+}
+
+.staffdashboard-card-info p {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #6c757d;
+    margin: 0;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+/* Charts Section */
+.staffdashboard-section-title {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: #212529;
+    margin-bottom: 1.5rem;
+}
+
+.staffdashboard-chart-card {
+    background: #fff;
+    border-radius: 20px;
+    padding: 1.5rem;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+    height: 400px;
+    margin-bottom: 1.5rem;
+    border: 1px solid #f1f3f5;
+}
+
+.staffdashboard-chart-header {
+    margin-bottom: 1.5rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.staffdashboard-chart-title {
+    font-size: 1rem;
+    font-weight: 700;
+    color: #495057;
+    margin: 0;
+}
+
+/* Responsive Grid */
+@media (max-width: 768px) {
+    .staffdashboard-summary-row>div {
+        width: 50% !important;
+        /* 2 cards per row on mobile */
+        margin-bottom: 1rem;
+    }
+
+    .staffdashboard-card-body {
+        padding: 1rem;
+        flex-direction: column;
+        text-align: center;
+    }
+
+    .staffdashboard-icon-wrapper {
+        margin-right: 0;
+        margin-bottom: 0.75rem;
+        width: 50px;
+        height: 50px;
+    }
+
+    .staffdashboard-chart-card {
+        height: 350px;
+    }
+}
+
+@media (max-width: 576px) {
+    .staffdashboard-summary-row>div {
+        width: 100% !important;
+    }
+}

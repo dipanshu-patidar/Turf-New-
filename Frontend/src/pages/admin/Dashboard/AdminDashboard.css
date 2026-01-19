@@ -1,0 +1,95 @@
+/* Admin Dashboard Scoped Styles */
+
+.admindashboard-container {
+    padding-bottom: 2rem;
+}
+
+.admindashboard-header {
+    margin-bottom: 1.5rem;
+}
+
+.admindashboard-title {
+    color: #212529;
+    font-weight: 700;
+    margin: 0;
+}
+
+.admindashboard-subtitle {
+    color: #6c757d;
+    margin: 0;
+}
+
+/* Summary Cards */
+.admindashboard-summary-card {
+    border: none;
+    border-radius: 1rem;
+    box-shadow: 0 .125rem .25rem rgba(0, 0, 0, .075);
+    /* shadow-sm equivalent */
+    height: 100%;
+    position: relative;
+    overflow: hidden;
+    transition: all 0.3s ease;
+}
+
+.admindashboard-summary-card:hover {
+    background-color: #f8f9fa;
+    /* hover-bg-light */
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.admindashboard-card-title {
+    color: #6c757d;
+    text-transform: uppercase;
+    font-weight: 700;
+    margin-bottom: 0.25rem;
+    font-size: 0.75rem;
+    letter-spacing: 0.5px;
+}
+
+.admindashboard-card-value {
+    font-weight: 700;
+    margin-bottom: 0;
+    color: #212529;
+}
+
+.admindashboard-card-subtext {
+    color: #198754;
+    /* success color */
+    font-weight: 500;
+    margin-top: 0.25rem;
+    display: block;
+    font-size: 0.75rem;
+}
+
+.admindashboard-icon-wrapper {
+    padding: 1rem;
+    border-radius: 0.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 .125rem .25rem rgba(0, 0, 0, .075);
+}
+
+/* Financial Charts */
+.admindashboard-analytics-section {
+    margin-top: 3rem;
+}
+
+.admindashboard-section-title {
+    font-weight: 700;
+    color: #212529;
+    margin-bottom: 1rem;
+}
+
+.admindashboard-chart-card {
+    border: none;
+    border-radius: 1rem;
+    box-shadow: 0 .125rem .25rem rgba(0, 0, 0, .075);
+    height: 100%;
+}
+
+.admindashboard-chart-title {
+    font-weight: 700;
+    margin-bottom: 1.5rem;
+}

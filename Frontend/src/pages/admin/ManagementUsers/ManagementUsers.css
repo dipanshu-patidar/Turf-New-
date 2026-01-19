@@ -1,0 +1,151 @@
+/* Management Users Page Styles */
+
+.mu-container {
+    padding: 1.5rem;
+    background-color: #fff;
+    min-height: 100%;
+}
+
+.mu-page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid #e9ecef;
+}
+
+.mu-title {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #212529;
+    margin: 0;
+}
+
+.mu-btn-primary {
+    background-color: #E63946;
+    /* Updated Color */
+    border: none;
+    padding: 0.6rem 1.2rem;
+    color: #fff;
+    font-weight: 600;
+    border-radius: 8px;
+    transition: all 0.2s;
+}
+
+.mu-btn-primary:hover {
+    background-color: #d62839;
+    /* Slightly darker shade for hover */
+    transform: translateY(-1px);
+    box-shadow: 0 4px 6px rgba(230, 57, 70, 0.2);
+}
+
+/* Table Styles */
+.mu-table-container {
+    background: #fff;
+    border-radius: 10px;
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.04);
+    overflow-x: auto;
+    border: 1px solid #f1f3f5;
+    margin-bottom: 1.5rem;
+}
+
+.mu-table {
+    margin-bottom: 0;
+    width: 100%;
+    min-width: 900px;
+}
+
+.mu-table thead th {
+    background-color: #f8f9fa;
+    color: #495057;
+    font-weight: 600;
+    text-transform: uppercase;
+    font-size: 0.75rem;
+    letter-spacing: 0.5px;
+    padding: 1rem;
+    border-bottom: 2px solid #e9ecef;
+    white-space: nowrap;
+}
+
+.mu-table tbody td {
+    padding: 1rem;
+    vertical-align: middle;
+    color: #212529;
+    background-color: #fff;
+    border-bottom: 1px solid #f1f3f5;
+    font-size: 0.9rem;
+}
+
+.mu-table tbody tr:hover td {
+    background-color: #f8f9fa;
+}
+
+/* Status Badges */
+.mu-badge {
+    padding: 0.4em 0.8em;
+    border-radius: 20px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    display: inline-block;
+}
+
+.mu-badge-active {
+    background-color: #d1e7dd;
+    color: #0f5132;
+}
+
+.mu-badge-inactive {
+    background-color: #f8d7da;
+    color: #842029;
+}
+
+/* Action Buttons */
+.mu-action-btn {
+    border: none;
+    background: transparent;
+    padding: 0.4rem;
+    border-radius: 4px;
+    margin-right: 0.25rem;
+    transition: background-color 0.2s;
+    color: #6c757d;
+}
+
+.mu-action-btn:hover {
+    background-color: #e9ecef;
+    color: #212529;
+}
+
+.mu-action-btn.edit:hover {
+    color: #0d6efd;
+    background-color: #cfe2ff;
+}
+
+.mu-action-btn.delete:hover {
+    color: #dc3545;
+    background-color: #f8d7da;
+}
+
+.mu-action-btn.key:hover {
+    color: #ffc107;
+    background-color: #fff3cd;
+}
+
+/* Modal Customization */
+.mu-modal-header {
+    background-color: #f8f9fa;
+    border-bottom: 1px solid #dee2e6;
+}
+
+.mu-modal-footer {
+    border-top: 1px solid #dee2e6;
+    background-color: #f8f9fa;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .mu-table-container {
+        overflow-x: auto;
+    }
+}

@@ -1,0 +1,245 @@
+/* Admin Recurring Bookings Styles */
+
+.adminrecurring-container {
+    padding: 1.5rem;
+    background-color: #fff;
+    min-height: 100%;
+}
+
+.adminrecurring-page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid #e9ecef;
+}
+
+.adminrecurring-title {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #212529;
+    margin: 0;
+}
+
+.adminrecurring-btn-primary {
+    background-color: #E63946;
+    border: none;
+    padding: 0.6rem 1.2rem;
+    color: #fff;
+    font-weight: 600;
+    border-radius: 8px;
+    transition: all 0.2s;
+}
+
+.adminrecurring-btn-primary:hover {
+    background-color: #d62839;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 6px rgba(230, 57, 70, 0.2);
+}
+
+/* Table Styles */
+.adminrecurring-table-container {
+    background: #fff;
+    border-radius: 10px;
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.04);
+    overflow-x: auto;
+    border: 1px solid #f1f3f5;
+    margin-bottom: 1.5rem;
+}
+
+.adminrecurring-table {
+    margin-bottom: 0;
+    width: 100%;
+    min-width: 1000px;
+}
+
+.adminrecurring-table thead th {
+    background-color: #f8f9fa;
+    color: #495057;
+    font-weight: 600;
+    text-transform: uppercase;
+    font-size: 0.75rem;
+    letter-spacing: 0.5px;
+    padding: 1rem;
+    border-bottom: 2px solid #e9ecef;
+    white-space: nowrap;
+}
+
+.adminrecurring-table tbody td {
+    padding: 1rem;
+    vertical-align: middle;
+    color: #212529;
+    background-color: #fff;
+    border-bottom: 1px solid #f1f3f5;
+    font-size: 0.9rem;
+}
+
+.adminrecurring-table tbody tr:hover td {
+    background-color: #f8f9fa;
+}
+
+.adminrecurring-table tbody tr.paused td {
+    opacity: 0.6;
+    background-color: #f8f9fa;
+}
+
+/* Status Badges */
+.adminrecurring-badge {
+    padding: 0.4em 0.8em;
+    border-radius: 20px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    display: inline-block;
+}
+
+.adminrecurring-badge-paid {
+    background-color: #d1e7dd;
+    color: #0f5132;
+}
+
+.adminrecurring-badge-pending {
+    background-color: #fff3cd;
+    color: #856404;
+}
+
+.adminrecurring-badge-paused {
+    background-color: #f8d7da;
+    color: #842029;
+}
+
+.adminrecurring-badge-active {
+    background-color: #cfe2ff;
+    color: #084298;
+}
+
+/* Recurrence Type Badge */
+.adminrecurring-recurrence-badge {
+    padding: 0.3em 0.6em;
+    border-radius: 12px;
+    font-size: 0.7rem;
+    font-weight: 600;
+    background-color: #e7f3ff;
+    color: #0056b3;
+    display: inline-block;
+}
+
+/* Days Display */
+.adminrecurring-days {
+    display: flex;
+    gap: 0.25rem;
+    flex-wrap: wrap;
+}
+
+.adminrecurring-day-badge {
+    background-color: #E63946;
+    color: #fff;
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    font-size: 0.7rem;
+    font-weight: 600;
+}
+
+/* Action Buttons */
+.adminrecurring-action-btn {
+    border: none;
+    background: transparent;
+    padding: 0.4rem;
+    border-radius: 4px;
+    margin-right: 0.25rem;
+    transition: background-color 0.2s;
+    color: #6c757d;
+}
+
+.adminrecurring-action-btn:hover {
+    background-color: #e9ecef;
+    color: #212529;
+}
+
+.adminrecurring-action-btn.edit:hover {
+    color: #0d6efd;
+    background-color: #cfe2ff;
+}
+
+.adminrecurring-action-btn.delete:hover {
+    color: #dc3545;
+    background-color: #f8d7da;
+}
+
+.adminrecurring-action-btn.pause:hover {
+    color: #ffc107;
+    background-color: #fff3cd;
+}
+
+.adminrecurring-action-btn.play:hover {
+    color: #198754;
+    background-color: #d1e7dd;
+}
+
+/* Modal Styles */
+.adminrecurring-modal-header {
+    background-color: #f8f9fa;
+    border-bottom: 1px solid #dee2e6;
+}
+
+.adminrecurring-modal-footer {
+    border-top: 1px solid #dee2e6;
+    background-color: #f8f9fa;
+}
+
+.adminrecurring-form-label {
+    font-weight: 600;
+    color: #495057;
+    margin-bottom: 0.5rem;
+}
+
+/* Day Selector */
+.adminrecurring-day-selector {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+
+.adminrecurring-day-checkbox {
+    display: none;
+}
+
+.adminrecurring-day-label {
+    padding: 0.5rem 1rem;
+    border: 2px solid #dee2e6;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-weight: 600;
+    font-size: 0.85rem;
+    background-color: #fff;
+    color: #495057;
+}
+
+.adminrecurring-day-checkbox:checked+.adminrecurring-day-label {
+    background-color: #E63946;
+    border-color: #E63946;
+    color: #fff;
+}
+
+.adminrecurring-day-label:hover {
+    border-color: #E63946;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .adminrecurring-table-container {
+        overflow-x: auto;
+    }
+
+    .adminrecurring-page-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 1rem;
+    }
+
+    .adminrecurring-days {
+        flex-direction: column;
+    }
+}

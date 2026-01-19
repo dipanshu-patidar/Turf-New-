@@ -1,0 +1,128 @@
+/* New Booking Screen Styles */
+
+.newbooking-container {
+    padding: 1.5rem;
+    background-color: #f8f9fa;
+    min-height: 100%;
+}
+
+.newbooking-page-header {
+    margin-bottom: 2rem;
+}
+
+.newbooking-title {
+    font-size: 1.75rem;
+    font-weight: 700;
+    color: #212529;
+    margin: 0;
+}
+
+.newbooking-card {
+    background: #fff;
+    border: none;
+    border-radius: 16px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+    padding: 2rem;
+}
+
+.newbooking-section-title {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: #495057;
+    margin-bottom: 1.5rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 2px solid #f1f3f5;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    display: flex;
+    align-items: center;
+}
+
+.newbooking-section-title i,
+.newbooking-section-title svg {
+    margin-right: 0.75rem;
+    color: #E63946;
+}
+
+.newbooking-form-label {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #6c757d;
+    margin-bottom: 0.5rem;
+}
+
+.newbooking-input {
+    border-radius: 10px;
+    padding: 0.75rem 1rem;
+    border: 1px solid #dee2e6;
+    font-size: 0.95rem;
+    transition: all 0.2s;
+}
+
+.newbooking-input:focus {
+    border-color: #E63946;
+    box-shadow: 0 0 0 0.25rem rgba(230, 57, 70, 0.1);
+}
+
+.newbooking-input[readonly] {
+    background-color: #f8f9fa;
+    cursor: default;
+    font-weight: 700;
+    color: #212529;
+}
+
+.newbooking-pricing-box {
+    background-color: #fcfcfc;
+    border: 1px dashed #dee2e6;
+    border-radius: 12px;
+    padding: 1.5rem;
+    margin-top: 0.5rem;
+}
+
+.newbooking-total-display {
+    font-size: 1.5rem;
+    font-weight: 800;
+    color: #212529;
+}
+
+.newbooking-balance-display {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: #dc3545;
+}
+
+.newbooking-actions {
+    margin-top: 2rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid #f1f3f5;
+    display: flex;
+    gap: 1rem;
+}
+
+.newbooking-btn-save {
+    padding: 0.75rem 2.5rem;
+    font-weight: 700;
+    border-radius: 10px;
+}
+
+.newbooking-btn-cancel {
+    padding: 0.75rem 1.5rem;
+    font-weight: 600;
+    border-radius: 10px;
+}
+
+/* Responsiveness */
+@media (max-width: 768px) {
+    .newbooking-card {
+        padding: 1.25rem;
+    }
+
+    .newbooking-actions {
+        flex-direction: column;
+    }
+
+    .newbooking-btn-save,
+    .newbooking-btn-cancel {
+        width: 100%;
+    }
+}

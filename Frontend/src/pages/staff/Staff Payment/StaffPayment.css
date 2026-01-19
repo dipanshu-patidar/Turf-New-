@@ -1,0 +1,159 @@
+/* Staff Payment Styles */
+
+.staffpayment-container {
+    padding: 1.5rem;
+    background-color: #f8f9fa;
+    min-height: 100%;
+}
+
+.staffpayment-page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2rem;
+}
+
+.staffpayment-title {
+    font-size: 1.75rem;
+    font-weight: 700;
+    color: #212529;
+    margin: 0;
+}
+
+/* Filter Bar */
+.staffpayment-filter-bar {
+    background: #fff;
+    padding: 1rem;
+    border-radius: 12px;
+    margin-bottom: 1.5rem;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.03);
+    display: flex;
+    gap: 1rem;
+    flex-wrap: wrap;
+    align-items: center;
+}
+
+.staffpayment-filter-input {
+    border-radius: 8px;
+    border: 1px solid #dee2e6;
+    padding: 0.5rem 0.75rem;
+    font-size: 0.9rem;
+    min-width: 150px;
+}
+
+/* Card & Table */
+.staffpayment-card {
+    background: #fff;
+    border: none;
+    border-radius: 16px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+    overflow: hidden;
+}
+
+.staffpayment-table-responsive {
+    overflow-x: auto;
+}
+
+.staffpayment-table {
+    width: 100%;
+    margin-bottom: 0;
+    vertical-align: middle;
+}
+
+.staffpayment-table th {
+    background-color: #f8f9fa;
+    color: #495057;
+    font-weight: 600;
+    text-transform: uppercase;
+    font-size: 0.75rem;
+    letter-spacing: 0.5px;
+    padding: 1rem 1.5rem;
+    border-bottom: 1px solid #dee2e6;
+    white-space: nowrap;
+}
+
+.staffpayment-table td {
+    padding: 1rem 1.5rem;
+    vertical-align: middle;
+    color: #212529;
+    border-bottom: 1px solid #f1f3f5;
+    font-size: 0.9rem;
+}
+
+.staffpayment-table tr:hover {
+    background-color: #fafafa;
+}
+
+/* Status Badges */
+.staffpayment-badge {
+    padding: 0.35rem 0.75rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+    border-radius: 30px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.staffpayment-badge.paid {
+    background-color: #d1e7dd;
+    color: #0f5132;
+}
+
+.staffpayment-badge.pending {
+    background-color: #fff3cd;
+    color: #664d03;
+}
+
+.staffpayment-badge.partial {
+    background-color: #cff4fc;
+    color: #055160;
+}
+
+/* Action Buttons */
+.staffpayment-action-btn {
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 8px;
+    border: none;
+    background: transparent;
+    color: #6c757d;
+    transition: all 0.2s;
+}
+
+.staffpayment-action-btn:hover {
+    background-color: #f1f3f5;
+    color: #212529;
+}
+
+.staffpayment-action-btn.pay:hover {
+    color: #198754;
+    background-color: #d1e7dd;
+}
+
+/* Modal */
+.staffpayment-modal-header {
+    border-bottom: none;
+    padding-bottom: 0;
+}
+
+.staffpayment-modal-title {
+    font-weight: 700;
+    color: #212529;
+}
+
+.staffpayment-form-label {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #6c757d;
+    margin-bottom: 0.5rem;
+}
+
+.staffpayment-input-readonly {
+    background-color: #e9ecef;
+    font-weight: 600;
+    color: #495057;
+    border: 1px solid #dee2e6;
+}

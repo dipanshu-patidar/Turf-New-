@@ -1,0 +1,154 @@
+/* Staff Check Booking Styles */
+
+.checkbooking-container {
+    padding: 1.5rem;
+    background-color: #f8f9fa;
+    min-height: 100%;
+}
+
+.checkbooking-page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2rem;
+}
+
+.checkbooking-title {
+    font-size: 1.75rem;
+    font-weight: 700;
+    color: #212529;
+    margin: 0;
+}
+
+/* Filter Bar */
+.checkbooking-filter-bar {
+    background: #fff;
+    padding: 1rem;
+    border-radius: 12px;
+    margin-bottom: 1.5rem;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.03);
+    display: flex;
+    gap: 1rem;
+    flex-wrap: wrap;
+    align-items: center;
+}
+
+.checkbooking-filter-input {
+    border-radius: 8px;
+    border: 1px solid #dee2e6;
+    padding: 0.5rem 0.75rem;
+    font-size: 0.9rem;
+    min-width: 150px;
+}
+
+/* Card & Table */
+.checkbooking-card {
+    background: #fff;
+    border: none;
+    border-radius: 16px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+    overflow: hidden;
+}
+
+.checkbooking-table-responsive {
+    overflow-x: auto;
+}
+
+.checkbooking-table {
+    width: 100%;
+    margin-bottom: 0;
+    vertical-align: middle;
+}
+
+.checkbooking-table th {
+    background-color: #f8f9fa;
+    color: #495057;
+    font-weight: 600;
+    text-transform: uppercase;
+    font-size: 0.75rem;
+    letter-spacing: 0.5px;
+    padding: 1rem 1.5rem;
+    border-bottom: 1px solid #dee2e6;
+    white-space: nowrap;
+}
+
+.checkbooking-table td {
+    padding: 1rem 1.5rem;
+    vertical-align: middle;
+    color: #212529;
+    border-bottom: 1px solid #f1f3f5;
+    font-size: 0.9rem;
+}
+
+.checkbooking-table tr:hover {
+    background-color: #fafafa;
+}
+
+/* Status Badges */
+.checkbooking-badge {
+    padding: 0.35rem 0.75rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+    border-radius: 30px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.checkbooking-badge.paid {
+    background-color: #d1e7dd;
+    color: #0f5132;
+}
+
+.checkbooking-badge.pending {
+    background-color: #fff3cd;
+    color: #664d03;
+}
+
+.checkbooking-badge.advance {
+    background-color: #f8d7da;
+    color: #842029;
+}
+
+/* Action Buttons */
+.checkbooking-action-btn {
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 8px;
+    border: none;
+    background: transparent;
+    color: #6c757d;
+    transition: all 0.2s;
+}
+
+.checkbooking-action-btn:hover {
+    background-color: #f1f3f5;
+    color: #212529;
+}
+
+.checkbooking-action-btn.view:hover {
+    color: #0d6efd;
+    background-color: #e7f3ff;
+}
+
+.checkbooking-action-btn.edit:hover {
+    color: #fd7e14;
+    background-color: #fff3cd;
+}
+
+.checkbooking-action-btn.delete:hover {
+    color: #dc3545;
+    background-color: #f8d7da;
+}
+
+.checkbooking-btn-clear {
+    color: #1A1A1A;
+    border-color: #1A1A1A;
+}
+
+.checkbooking-btn-clear:hover {
+    background-color: #1A1A1A;
+    color: #fff;
+}

@@ -1,0 +1,166 @@
+/* Admin Profile Styles */
+
+:root {
+    --adminprofile-primary: #E63946;
+}
+
+.adminprofile-container {
+    padding: 1.5rem;
+    min-height: 100%;
+    background-color: #f8f9fa;
+}
+
+/* Card Styles */
+.adminprofile-card {
+    background: #fff;
+    border: none;
+    border-radius: 12px;
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.05);
+    margin-bottom: 2rem;
+    overflow: hidden;
+}
+
+.adminprofile-card-header {
+    padding: 1.25rem 1.5rem;
+    background: #fff;
+    border-bottom: 1px solid #f1f3f5;
+    display: flex;
+    align-items: center;
+}
+
+.adminprofile-header-indicator {
+    width: 4px;
+    height: 24px;
+    background-color: var(--adminprofile-primary);
+    margin-right: 12px;
+    border-radius: 2px;
+}
+
+.adminprofile-card-title {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: #212529;
+    margin: 0;
+}
+
+.adminprofile-card-body {
+    padding: 2rem 1.5rem;
+}
+
+/* Form Styles */
+.adminprofile-form-label {
+    font-weight: 600;
+    color: #495057;
+    margin-bottom: 0.5rem;
+    font-size: 0.9rem;
+}
+
+.adminprofile-form-label .required {
+    color: var(--adminprofile-primary);
+    margin-left: 2px;
+}
+
+.adminprofile-form-control {
+    border-radius: 8px;
+    border: 1px solid #dee2e6;
+    padding: 0.75rem 1rem;
+    font-size: 0.95rem;
+    transition: all 0.2s;
+}
+
+.adminprofile-form-control:focus {
+    border-color: var(--adminprofile-primary);
+    box-shadow: 0 0 0 0.2rem rgba(230, 57, 70, 0.1);
+}
+
+/* Avatar Styles */
+.adminprofile-avatar-section {
+    margin-top: 1.5rem;
+}
+
+.adminprofile-avatar-label {
+    font-weight: 600;
+    color: #495057;
+    margin-bottom: 1rem;
+    display: block;
+    font-size: 0.9rem;
+}
+
+.adminprofile-upload-btn-container {
+    margin-bottom: 1rem;
+}
+
+.adminprofile-upload-btn {
+    background-color: var(--adminprofile-primary);
+    color: #fff;
+    border: none;
+    padding: 0.6rem 1.2rem;
+    border-radius: 8px;
+    font-weight: 600;
+    font-size: 0.9rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.adminprofile-upload-btn:hover {
+    background-color: #d62839;
+    transform: translateY(-1px);
+}
+
+.adminprofile-avatar-preview {
+    width: 120px;
+    height: 120px;
+    border-radius: 12px;
+    object-fit: cover;
+    border: 1px solid #dee2e6;
+    padding: 4px;
+    background: #f8f9fa;
+}
+
+.adminprofile-avatar-hint {
+    font-size: 0.8rem;
+    color: #6c757d;
+    margin-top: 0.75rem;
+}
+
+/* Footer & Buttons */
+.adminprofile-card-footer {
+    padding: 1.5rem;
+    background: #fff;
+    display: flex;
+    justify-content: flex-end;
+}
+
+.adminprofile-btn-primary {
+    background-color: var(--adminprofile-primary);
+    border: none;
+    padding: 0.75rem 2rem;
+    color: #fff;
+    font-weight: 600;
+    border-radius: 8px;
+    transition: all 0.2s;
+}
+
+.adminprofile-btn-primary:hover {
+    background-color: #d62839;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(230, 57, 70, 0.3);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .adminprofile-container {
+        padding: 1rem;
+    }
+
+    .adminprofile-card-body {
+        padding: 1.5rem 1rem;
+    }
+
+    .adminprofile-btn-primary {
+        width: 100%;
+    }
+}
