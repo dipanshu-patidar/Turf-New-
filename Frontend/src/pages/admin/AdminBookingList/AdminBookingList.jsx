@@ -276,8 +276,9 @@ const AdminBookingList = () => {
                             <th>Customer</th>
                             <th>Court</th>
                             <th>Schedule</th>
+                            <th>Advance Paid</th>
+                            <th>Due Balance</th>
                             <th>Payment Status</th>
-                            <th>Balance</th>
                             <th>Booking Status</th>
                             <th>Actions</th>
                         </tr>
@@ -299,16 +300,21 @@ const AdminBookingList = () => {
                                     <small className="text-muted">{booking.startTime} - {booking.endTime}</small>
                                 </td>
                                 <td>
-                                    <span className={`adminbookinglist-badge badge-${booking.paymentStatus?.toLowerCase()} me-2`}>{booking.paymentStatus}</span>
+                                    <span className="fw-bold text-info">
+                                        ₹{booking.paymentDetails?.advancePaid || 0}
+                                    </span>
                                 </td>
                                 <td>
                                     <span className={`fw-bold ${booking.paymentStatus === 'PAID' ? 'text-success' :
-                                            booking.paymentStatus === 'PARTIAL' ? 'text-warning' :
-                                                booking.paymentStatus === 'PENDING' ? 'text-danger' :
-                                                    'text-muted'
+                                        booking.paymentStatus === 'PARTIAL' ? 'text-warning' :
+                                            booking.paymentStatus === 'PENDING' ? 'text-danger' :
+                                                'text-muted'
                                         }`}>
                                         ₹{booking.paymentDetails?.balanceAmount || 0}
                                     </span>
+                                </td>
+                                <td>
+                                    <span className={`adminbookinglist-badge badge-${booking.paymentStatus?.toLowerCase()} me-2`}>{booking.paymentStatus}</span>
                                 </td>
                                 <td>
                                     <span className={`adminbookinglist-badge badge-${booking.status.toLowerCase()}`}>{booking.status}</span>
@@ -321,12 +327,12 @@ const AdminBookingList = () => {
                         ))}
                         {bookings.length === 0 && !loading && (
                             <tr>
-                                <td colSpan="8" className="text-center py-5 text-muted">No bookings found matching criteria.</td>
+                                <td colSpan="9" className="text-center py-5 text-muted">No bookings found matching criteria.</td>
                             </tr>
                         )}
                         {loading && (
                             <tr>
-                                <td colSpan="8" className="text-center py-5 text-muted">Loading Bookings...</td>
+                                <td colSpan="9" className="text-center py-5 text-muted">Loading Bookings...</td>
                             </tr>
                         )}
                     </tbody>
