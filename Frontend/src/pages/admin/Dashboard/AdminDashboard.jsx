@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Container, Row, Col, Card } from 'react-bootstrap';
+import { Container, Row, Col, Card, Spinner } from 'react-bootstrap';
 import {
     FaCalendarCheck, FaMoneyBillWave, FaClock, FaCalendarAlt, FaChartLine
 } from 'react-icons/fa';
@@ -8,6 +8,7 @@ import {
     PieChart, Pie, Cell, BarChart, Bar, Legend
 } from 'recharts';
 import toast from 'react-hot-toast';
+import dashboardService from '../../../api/dashboardService';
 import './AdminDashboard.css';
 
 // --- Internal Components ---
@@ -29,47 +30,48 @@ const StatCard = ({ title, value, icon, color, subText }) => (
     </Card>
 );
 
-const SummaryCards = () => {
-    // Mock Data
+const SummaryCards = ({ data }) => {
+    if (!data) return null;
+
     const stats = [
         {
             title: "Today's Bookings",
-            value: "14",
+            value: data.todayBookings || 0,
             icon: <FaCalendarCheck size={20} />,
             color: "primary",
-            subText: "+2 from yesterday"
+            subText: "Latest bookings"
         },
         {
             title: "Today's Revenue",
-            value: "₹ 12,500",
+            value: `₹ ${data.todayRevenue?.toLocaleString() || 0}`,
             icon: <FaMoneyBillWave size={20} />,
             color: "success",
-            subText: "On track"
+            subText: "Received today"
         },
         {
             title: "Pending Balance",
-            value: "₹ 4,200",
+            value: `₹ ${data.pendingBalance?.toLocaleString() || 0}`,
             icon: <FaClock size={20} />,
             color: "warning",
-            subText: "Needs attention"
+            subText: "Overall outstanding"
         },
         {
             title: "This Month Bookings",
-            value: "342",
+            value: data.monthBookings || 0,
             icon: <FaCalendarAlt size={20} />,
             color: "info",
-            subText: "+12% vs last month"
+            subText: "Current month"
         },
         {
             title: "Month Collection",
-            value: "₹ 2.85L",
+            value: `₹ ${(data.monthCollection / 100000).toFixed(2)}L`,
             icon: <FaChartLine size={20} />,
             color: "dark",
-            subText: "Exceeding targets"
+            subText: "This month total"
         },
         {
             title: "Total Revenue",
-            value: "₹ 15.40L",
+            value: `₹ ${(data.totalRevenue / 100000).toFixed(2)}L`,
             icon: <FaMoneyBillWave size={20} />,
             color: "primary",
             subText: "Lifetime earnings"
@@ -89,29 +91,13 @@ const SummaryCards = () => {
     );
 };
 
-const CashFlowCharts = () => {
+const CashFlowCharts = ({ revenueTrend, paymentStatus, weeklyEarnings }) => {
     const COLORS = ['#198754', '#ffc107', '#dc3545', '#0d6efd'];
 
-    // Mock Data
-    const monthlyRevenueData = [
-        { name: '1', value: 4000 }, { name: '5', value: 3000 }, { name: '10', value: 2000 },
-        { name: '15', value: 2780 }, { name: '20', value: 1890 }, { name: '25', value: 2390 },
-        { name: '30', value: 3490 },
-    ];
-
+    // Format Pie Data
     const paymentStatusData = [
-        { name: 'Received', value: 75000 },
-        { name: 'Pending', value: 15000 },
-    ];
-
-    const weekData = [
-        { name: 'Mon', revenue: 2000 },
-        { name: 'Tue', revenue: 2500 },
-        { name: 'Wed', revenue: 2200 },
-        { name: 'Thu', revenue: 2800 },
-        { name: 'Fri', revenue: 4500 },
-        { name: 'Sat', revenue: 8000 },
-        { name: 'Sun', revenue: 8500 },
+        { name: 'Received', value: paymentStatus?.received || 0 },
+        { name: 'Pending', value: paymentStatus?.pending || 0 },
     ];
 
     return (
@@ -124,17 +110,17 @@ const CashFlowCharts = () => {
             <Col lg={8}>
                 <Card className="admindashboard-chart-card">
                     <Card.Body className="p-4">
-                        <h6 className="admindashboard-chart-title">Monthly Revenue Trend</h6>
+                        <h6 className="admindashboard-chart-title">Monthly Revenue Trend (Daily)</h6>
                         <div style={{ width: '100%', height: 300 }}>
                             <ResponsiveContainer>
-                                <LineChart data={monthlyRevenueData}>
+                                <LineChart data={revenueTrend}>
                                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#eee" />
-                                    <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#aaa' }} />
+                                    <XAxis dataKey="day" axisLine={false} tickLine={false} tick={{ fill: '#aaa' }} />
                                     <YAxis axisLine={false} tickLine={false} tick={{ fill: '#aaa' }} unit="₹" />
                                     <Tooltip
                                         contentStyle={{ borderRadius: '10px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
                                     />
-                                    <Line type="monotone" dataKey="value" stroke="#E63946" strokeWidth={3} dot={{ r: 4, fill: '#E63946' }} activeDot={{ r: 6 }} />
+                                    <Line type="monotone" dataKey="amount" stroke="#E63946" strokeWidth={3} dot={{ r: 4, fill: '#E63946' }} activeDot={{ r: 6 }} />
                                 </LineChart>
                             </ResponsiveContainer>
                         </div>
@@ -146,7 +132,7 @@ const CashFlowCharts = () => {
             <Col lg={4}>
                 <Card className="admindashboard-chart-card">
                     <Card.Body className="p-4">
-                        <h6 className="admindashboard-chart-title">Payment Status</h6>
+                        <h6 className="admindashboard-chart-title">Payment Status Breakdown</h6>
                         <div style={{ width: '100%', height: 300 }}>
                             <ResponsiveContainer>
                                 <PieChart>
@@ -179,12 +165,12 @@ const CashFlowCharts = () => {
                         <h6 className="admindashboard-chart-title">Weekly Earnings Breakdown</h6>
                         <div style={{ width: '100%', height: 300 }}>
                             <ResponsiveContainer>
-                                <BarChart data={weekData}>
+                                <BarChart data={weeklyEarnings}>
                                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
-                                    <XAxis dataKey="name" axisLine={false} tickLine={false} />
+                                    <XAxis dataKey="day" axisLine={false} tickLine={false} />
                                     <YAxis axisLine={false} tickLine={false} unit="₹" />
                                     <Tooltip cursor={{ fill: 'transparent' }} contentStyle={{ borderRadius: '8px' }} />
-                                    <Bar dataKey="revenue" fill="#1A1A1A" radius={[5, 5, 0, 0]} barSize={40} />
+                                    <Bar dataKey="amount" fill="#1A1A1A" radius={[5, 5, 0, 0]} barSize={40} />
                                 </BarChart>
                             </ResponsiveContainer>
                         </div>
@@ -198,13 +184,50 @@ const CashFlowCharts = () => {
 // --- Main Page Component ---
 
 const AdminDashboard = () => {
-    // In a real app, we'd get the user role from a global AuthContext.
-    // For this UI demo, we assume we are viewing as Admin because the Layout route is /admin.
-    const role = "ADMIN";
+    const role = "ADMIN"; // Static for now as per original code
+    const [loading, setLoading] = useState(true);
+    const [dashboardData, setDashboardData] = useState({
+        summary: null,
+        revenueTrend: [],
+        paymentStatus: null,
+        weeklyEarnings: []
+    });
 
     useEffect(() => {
-        toast('Dashboard loaded', { icon: '👏' });
+        const fetchDashboardData = async () => {
+            try {
+                setLoading(true);
+                const [summary, revenueTrend, paymentStatus, weeklyEarnings] = await Promise.all([
+                    dashboardService.getSummary(),
+                    dashboardService.getMonthlyRevenue(),
+                    dashboardService.getPaymentStatus(),
+                    dashboardService.getWeeklyEarnings()
+                ]);
+
+                setDashboardData({
+                    summary,
+                    revenueTrend,
+                    paymentStatus,
+                    weeklyEarnings
+                });
+            } catch (error) {
+                console.error('Error fetching dashboard data:', error);
+                toast.error('Failed to load dashboard analytics');
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchDashboardData();
     }, []);
+
+    if (loading) {
+        return (
+            <div className="d-flex justify-content-center align-items-center vh-100">
+                <Spinner animation="border" variant="primary" />
+            </div>
+        );
+    }
 
     return (
         <Container fluid className="px-0 admindashboard-container">
@@ -214,17 +237,19 @@ const AdminDashboard = () => {
                     <h2 className="admindashboard-title">Dashboard Overview</h2>
                     <p className="admindashboard-subtitle">Welcome back, Admin</p>
                 </div>
-                {/* 
-                 */}
             </div>
 
             {/* Top Summary Cards */}
-            <SummaryCards />
+            <SummaryCards data={dashboardData.summary} />
 
             {/* Financial Analytics - strictly for ADMIN */}
             {role === "ADMIN" && (
                 <div className="admindashboard-analytics-section">
-                    <CashFlowCharts />
+                    <CashFlowCharts
+                        revenueTrend={dashboardData.revenueTrend}
+                        paymentStatus={dashboardData.paymentStatus}
+                        weeklyEarnings={dashboardData.weeklyEarnings}
+                    />
                 </div>
             )}
         </Container>
@@ -232,3 +257,4 @@ const AdminDashboard = () => {
 };
 
 export default AdminDashboard;
+
