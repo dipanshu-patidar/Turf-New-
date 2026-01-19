@@ -1,20 +1,16 @@
-import React, { useState } from 'react';
-import { Button, Modal, Form, Badge } from 'react-bootstrap';
-import { FaChevronLeft, FaChevronRight, FaCalendarAlt, FaPlus, FaTrash, FaEdit, FaRupeeSign } from 'react-icons/fa';
+import React, { useState, useEffect } from 'react';
+import { Button, Modal, Form, Badge, Spinner } from 'react-bootstrap';
+import { FaChevronLeft, FaChevronRight, FaCalendarAlt, FaTrash, FaEdit, FaRupeeSign } from 'react-icons/fa';
 import { InputGroup } from 'react-bootstrap';
 import toast from 'react-hot-toast';
 import './StaffBooking.css';
+import api from '../../../api/axiosInstance';
 
 const StaffBooking = () => {
     const [selectedDate, setSelectedDate] = useState(new Date());
-
-    const courts = [
-        "Football",
-        "Cricket",
-        "Badminton - Court 1",
-        "Badminton - Court 2",
-        "Pickleball"
-    ];
+    const [courts, setCourts] = useState([]);
+    const [calendarData, setCalendarData] = useState([]);
+    const [loading, setLoading] = useState(true);
 
     const timeSlots = [];
     for (let h = 6; h < 24; h++) {
@@ -24,64 +20,9 @@ const StaffBooking = () => {
         }
     }
 
-    // Mock Bookings Data
-    const mockBookings = [
-        {
-            id: 1,
-            customerName: "Rahul Sharma",
-            court: "Football",
-            startTime: "06:00",
-            endTime: "07:00",
-            status: "Fully Paid",
-            date: selectedDate.toISOString().split('T')[0],
-            phone: "9876543210"
-        },
-        {
-            id: 2,
-            customerName: "Priya Singh",
-            court: "Badminton - Court 1",
-            startTime: "09:00",
-            endTime: "10:00",
-            status: "Balance Pending",
-            date: selectedDate.toISOString().split('T')[0],
-            phone: "9876543211"
-        },
-        {
-            id: 3,
-            customerName: "Amit Verma",
-            court: "Cricket",
-            startTime: "17:00",
-            endTime: "18:00",
-            status: "Advance Pending",
-            date: selectedDate.toISOString().split('T')[0],
-            phone: "9876543212"
-        },
-        {
-            id: 4,
-            customerName: "Sneha Patel",
-            court: "Pickleball",
-            startTime: "10:00",
-            endTime: "11:00",
-            status: "Fully Paid",
-            date: selectedDate.toISOString().split('T')[0],
-            phone: "9876543213"
-        },
-        {
-            id: 5,
-            customerName: "Vivian D",
-            court: "Badminton - Court 2",
-            startTime: "18:00",
-            endTime: "19:00",
-            status: "Fully Paid",
-            date: selectedDate.toISOString().split('T')[0],
-            phone: "9876543214"
-        }
-    ];
-
     const [showNewModal, setShowNewModal] = useState(false);
     const [showEditModal, setShowEditModal] = useState(false);
-    const [selectedSlot, setSelectedSlot] = useState({ court: '', startTime: '', endTime: '', price: 0, hourlyRate: 0 });
-    const [bookings, setBookings] = useState(mockBookings);
+    const [selectedSlot, setSelectedSlot] = useState({ courtId: '', court: '', sportType: '', startTime: '', endTime: '', price: 0, hourlyRate: 0 });
     const [selectedBooking, setSelectedBooking] = useState(null);
     const [newBookingData, setNewBookingData] = useState({
         customerName: '',
@@ -89,22 +30,59 @@ const StaffBooking = () => {
         advancePaid: 0
     });
 
-    // Mock Pricing Logic (same as Admin)
-    const getPrice = (court, date) => {
-        // Simple mock: Weekday/Weekend logic could be added here
-        const baseRates = {
-            "Football": 1200,
-            "Cricket": 1000,
-            "Badminton - Court 1": 400,
-            "Badminton - Court 2": 400,
-            "Pickleball": 500
-        };
-        return baseRates[court] || 500;
+    const dateToString = (date) => {
+        return date.toISOString().split('T')[0];
     };
 
-    const handleSlotClick = (court, time) => {
-        const isBooked = bookings.find(b => b.court === court && b.startTime === time);
-        if (isBooked) return;
+    const fetchCourts = async () => {
+        try {
+            const response = await api.get('/courts');
+            setCourts(response.data);
+        } catch (error) {
+            console.error('Error fetching courts:', error);
+        }
+    };
+
+    const fetchCalendarData = async () => {
+        setLoading(true);
+        try {
+            const dateStr = dateToString(selectedDate);
+            const response = await api.get(`/calendar/day?date=${dateStr}`);
+            if (response.data.success) {
+                setCalendarData(response.data.courts);
+            }
+        } catch (error) {
+            console.error('Error fetching calendar:', error);
+            toast.error('Failed to load calendar data');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        fetchCourts();
+    }, []);
+
+    useEffect(() => {
+        fetchCalendarData();
+    }, [selectedDate]);
+
+    // Check if slot is booked
+    const getBookingForSlot = (courtId, timeSlot) => {
+        const court = calendarData.find(c => c.courtId === courtId);
+        if (!court) return null;
+
+        return court.slots.find(b => {
+            return timeSlot >= b.startTime && timeSlot < b.endTime;
+        });
+    };
+
+    const handleSlotClick = (courtId, courtName, time) => {
+        const booking = getBookingForSlot(courtId, time);
+        if (booking) return;
+
+        const court = courts.find(c => c._id === courtId);
+        if (!court) return;
 
         // Default 1 hour duration
         const [h, m] = time.split(':').map(Number);
@@ -113,9 +91,21 @@ const StaffBooking = () => {
         const finalM = endM % 60;
         const endTime = `${endH.toString().padStart(2, '0')}:${finalM.toString().padStart(2, '0')}`;
 
-        const hourlyRate = getPrice(court, selectedDate);
+        const isWeekend = (date) => {
+            const day = date.getDay();
+            return day === 0 || day === 6;
+        };
+        const hourlyRate = isWeekend(selectedDate) ? court.weekendPrice : court.weekdayPrice;
 
-        setSelectedSlot({ court, startTime: time, endTime, price: hourlyRate, hourlyRate });
+        setSelectedSlot({
+            courtId,
+            court: courtName,
+            sportType: court.sportType,
+            startTime: time,
+            endTime,
+            price: hourlyRate,
+            hourlyRate
+        });
         setNewBookingData({
             customerName: '',
             phone: '',
@@ -135,39 +125,47 @@ const StaffBooking = () => {
         setSelectedSlot(prev => ({ ...prev, endTime: newEndTime, price }));
     };
 
-    const handleNewBookingSubmit = (e) => {
+    const handleNewBookingSubmit = async (e) => {
         e.preventDefault();
+        try {
+            const payload = {
+                customerName: newBookingData.customerName,
+                customerPhone: newBookingData.phone,
+                sportType: selectedSlot.sportType,
+                courtId: selectedSlot.courtId,
+                bookingDate: dateToString(selectedDate),
+                startTime: selectedSlot.startTime,
+                endTime: selectedSlot.endTime,
+                advancePaid: Number(newBookingData.advancePaid),
+                paymentMode: 'CASH',
+                discountType: 'NONE',
+                discountValue: 0
+            };
 
-        const advancePaid = parseFloat(newBookingData.advancePaid) || 0;
-        const totalPrice = selectedSlot.price;
-        const balance = totalPrice - advancePaid;
-
-        let status = 'Advance Pending';
-        if (advancePaid >= totalPrice) status = 'Fully Paid';
-        else if (advancePaid > 0) status = 'Balance Pending';
-
-        const newBooking = {
-            id: Date.now(),
-            customerName: newBookingData.customerName,
-            court: selectedSlot.court,
-            startTime: selectedSlot.startTime,
-            endTime: selectedSlot.endTime,
-            status: status,
-            date: selectedDate.toISOString().split('T')[0],
-            phone: newBookingData.phone,
-            totalPrice,
-            advancePaid,
-            balance
-        };
-        setBookings([...bookings, newBooking]);
-        toast.success('Booking created successfully');
-        setShowNewModal(false);
+            await api.post('/admin/bookings', payload);
+            toast.success('Booking created successfully');
+            setShowNewModal(false);
+            fetchCalendarData();
+        } catch (error) {
+            toast.error(error.response?.data?.message || 'Failed to create booking');
+        }
     };
 
-    const handleCancelBooking = () => {
-        setBookings(bookings.filter(b => b.id !== selectedBooking.id));
-        toast.success('Booking cancelled successfully');
-        setShowEditModal(false);
+    const handleBookingClick = (e, booking) => {
+        e.stopPropagation();
+        setSelectedBooking(booking);
+        setShowEditModal(true);
+    };
+
+    const handleCancelBooking = async () => {
+        try {
+            await api.delete(`/admin/bookings/${selectedBooking.bookingId}`);
+            toast.success('Booking cancelled successfully');
+            setShowEditModal(false);
+            fetchCalendarData();
+        } catch (error) {
+            toast.error('Failed to cancel booking');
+        }
     };
 
     const handlePrevDay = () => {
@@ -196,19 +194,21 @@ const StaffBooking = () => {
     };
 
     const getStatusBadgeClass = (status) => {
-        switch (status) {
-            case 'Fully Paid': return 'staffbooking-badge-paid';
-            case 'Balance Pending': return 'staffbooking-badge-pending-bal';
-            case 'Advance Pending': return 'staffbooking-badge-pending-adv';
+        const s = (status || '').toUpperCase();
+        switch (s) {
+            case 'PAID': return 'staffbooking-badge-paid';
+            case 'PARTIAL': return 'staffbooking-badge-pending-bal';
+            case 'PENDING': return 'staffbooking-badge-pending-adv';
             default: return '';
         }
     };
 
     const getStatusTheme = (status) => {
-        switch (status) {
-            case 'Fully Paid': return 'paid';
-            case 'Balance Pending': return 'pending-bal';
-            case 'Advance Pending': return 'pending-adv';
+        const s = (status || '').toUpperCase();
+        switch (s) {
+            case 'PAID': return 'paid';
+            case 'PARTIAL': return 'pending-bal';
+            case 'PENDING': return 'pending-adv';
             default: return '';
         }
     };
@@ -253,32 +253,39 @@ const StaffBooking = () => {
 
             {/* Calendar Grid */}
             <div className="staffbooking-calendar-wrapper">
-                <div className="staffbooking-calendar-grid">
+                {loading && (
+                    <div className="staffbooking-loading-overlay">
+                        <Spinner animation="border" variant="primary" />
+                    </div>
+                )}
+                <div className="staffbooking-calendar-grid" style={{ gridTemplateColumns: `80px repeat(${calendarData.length}, 1fr)` }}>
                     {/* Header Row */}
                     <div className="staffbooking-header-cell time-head">Time</div>
-                    {courts.map(court => (
-                        <div key={court} className="staffbooking-header-cell">{court}</div>
+                    {calendarData.map(court => (
+                        <div key={court.courtId} className="staffbooking-header-cell">
+                            {court.courtName}
+                            <div className="small text-muted fw-normal">{court.sportType}</div>
+                        </div>
                     ))}
 
                     {/* Time Rows */}
                     {timeSlots.map(time => (
                         <div key={time} className="staffbooking-time-row">
                             <div className="staffbooking-time-cell">{time}</div>
-                            {courts.map(court => {
+                            {calendarData.map(court => {
                                 // Check for booking in this slot
-                                const booking = bookings.find(b =>
-                                    b.court === court && b.startTime === time
-                                );
+                                const booking = getBookingForSlot(court.courtId, time);
+                                const isStart = booking && booking.startTime === time;
 
                                 return (
                                     <div
-                                        key={`${court}-${time}`}
+                                        key={`${court.courtId}-${time}`}
                                         className="staffbooking-slot"
-                                        onClick={() => handleSlotClick(court, time)}
+                                        onClick={() => handleSlotClick(court.courtId, court.courtName, time)}
                                     >
-                                        {booking && (
+                                        {isStart && (
                                             <div
-                                                className={`staffbooking-booked-card ${getStatusTheme(booking.status)}`}
+                                                className={`staffbooking-booked-card ${getStatusTheme(booking.paymentStatus)}`}
                                                 onClick={(e) => handleBookingClick(e, booking)}
                                             >
                                                 <div>
@@ -289,8 +296,8 @@ const StaffBooking = () => {
                                                         {booking.customerName}
                                                     </div>
                                                 </div>
-                                                <div className={`staffbooking-status-badge ${getStatusBadgeClass(booking.status)}`}>
-                                                    {booking.status}
+                                                <div className={`staffbooking-status-badge ${getStatusBadgeClass(booking.paymentStatus)}`}>
+                                                    {booking.paymentStatus}
                                                 </div>
                                             </div>
                                         )}

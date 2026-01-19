@@ -105,8 +105,8 @@ const AdminNewBooking = () => {
         // Auto-Calculate Price if NOT overridden
         let calculatedPrice = pricing.totalPrice;
         if (!pricing.isPriceOverridden) {
-            // Price per minute * minutes
-            calculatedPrice = Math.ceil((hourlyRate / 60) * totalMinutes);
+            // Price per minute * minutes (Multiply first to avoid floating point errors)
+            calculatedPrice = Math.ceil((hourlyRate * totalMinutes) / 60);
         }
 
         // Apply Discount

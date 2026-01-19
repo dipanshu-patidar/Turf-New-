@@ -1,14 +1,17 @@
-import React, { useState, useRef } from 'react';
-import { Button, Modal, Form, InputGroup } from 'react-bootstrap';
+import React, { useState, useRef, useEffect } from 'react';
+import { Button, Modal, Form, InputGroup, Spinner } from 'react-bootstrap';
 import { FaChevronLeft, FaChevronRight, FaCalendarDay, FaRupeeSign, FaTrash } from 'react-icons/fa';
 import toast from 'react-hot-toast';
 import './AdminBooking.css';
+import api from '../../../api/axiosInstance';
 
 const AdminBooking = () => {
-    // Courts configuration
-    const courts = ['Football', 'Cricket', 'Badminton - Court 1', 'Badminton - Court 2', 'Pickleball'];
+    // State
+    const [selectedDate, setSelectedDate] = useState(new Date());
+    const [calendarData, setCalendarData] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const dateInputRef = useRef(null);
 
-    // Time slots (6 AM to 11 PM in 1-hour intervals)
     // Time slots (6 AM to 11 PM in 15-minute intervals)
     const timeSlots = [];
     for (let h = 6; h < 23; h++) {
@@ -17,45 +20,6 @@ const AdminBooking = () => {
             timeSlots.push(time);
         }
     }
-
-    // Mock pricing (weekday/weekend)
-    const courtPricing = {
-        'Football': { weekday: 1200, weekend: 1500 },
-        'Cricket': { weekday: 1000, weekend: 1300 },
-        'Badminton - Court 1': { weekday: 400, weekend: 600 },
-        'Badminton - Court 2': { weekday: 400, weekend: 600 },
-        'Pickleball': { weekday: 500, weekend: 700 }
-    };
-
-    // State
-    const [selectedDate, setSelectedDate] = useState(new Date());
-    const dateInputRef = useRef(null);
-    const [bookings, setBookings] = useState([
-        {
-            id: 1,
-            court: 'Football',
-            date: new Date().toISOString().split('T')[0],
-            startTime: '09:00',
-            endTime: '10:00',
-            customerName: 'Rahul Sharma',
-            phone: '9876543210',
-            totalPrice: 1200,
-            advancePaid: 1200,
-            paymentStatus: 'paid'
-        },
-        {
-            id: 2,
-            court: 'Cricket',
-            date: new Date().toISOString().split('T')[0],
-            startTime: '10:00',
-            endTime: '11:30',
-            customerName: 'Priya Singh',
-            phone: '9123456780',
-            totalPrice: 1500,
-            advancePaid: 500,
-            paymentStatus: 'balance'
-        }
-    ]);
 
     // Modal states
     const [showAddModal, setShowAddModal] = useState(false);
@@ -73,29 +37,46 @@ const AdminBooking = () => {
         advancePaid: 0
     });
 
-    // Helper functions
-    const formatDate = (date) => {
-        return date.toLocaleDateString('en-IN', {
-            weekday: 'long',
-            year: 'numeric',
-            month: 'long',
-            day: 'numeric'
-        });
-    };
-
-    const isWeekend = (date) => {
-        const day = date.getDay();
-        return day === 0 || day === 6; // Sunday or Saturday
-    };
-
-    const getPrice = (court, date) => {
-        const pricing = courtPricing[court];
-        return isWeekend(date) ? pricing.weekend : pricing.weekday;
-    };
-
     const dateToString = (date) => {
         return date.toISOString().split('T')[0];
     };
+
+    const [courts, setCourts] = useState([]);
+
+    // Fetch Courts
+    const fetchCourts = async () => {
+        try {
+            const response = await api.get('/courts');
+            setCourts(response.data);
+        } catch (error) {
+            console.error('Error fetching courts:', error);
+        }
+    };
+
+    // Fetch Calendar Data
+    const fetchCalendarData = async () => {
+        setLoading(true);
+        try {
+            const dateStr = dateToString(selectedDate);
+            const response = await api.get(`/calendar/day?date=${dateStr}`);
+            if (response.data.success) {
+                setCalendarData(response.data.courts);
+            }
+        } catch (error) {
+            console.error('Error fetching calendar:', error);
+            toast.error('Failed to load calendar data');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        fetchCourts();
+    }, []);
+
+    useEffect(() => {
+        fetchCalendarData();
+    }, [selectedDate]);
 
     // Navigation handlers
     const goToPreviousDay = () => {
@@ -119,17 +100,36 @@ const AdminBooking = () => {
         setShowDatePicker(true);
     };
 
+    // Helper functions
+    const formatDate = (date) => {
+        return date.toLocaleDateString('en-IN', {
+            weekday: 'long',
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric'
+        });
+    };
+
+    const isWeekend = (date) => {
+        const day = date.getDay();
+        return day === 0 || day === 6; // Sunday or Saturday
+    };
+
     // Check if slot is booked
-    const getBookingForSlot = (court, timeSlot) => {
-        return bookings.find(b => {
-            if (b.court !== court || b.date !== dateToString(selectedDate)) return false;
-            // Check if timeSlot falls within booking duration (inclusive start, exclusive end)
+    const getBookingForSlot = (courtId, timeSlot) => {
+        const court = calendarData.find(c => c.courtId === courtId);
+        if (!court) return null;
+
+        return court.slots.find(b => {
             return timeSlot >= b.startTime && timeSlot < b.endTime;
         });
     };
 
     // Handle empty slot click
-    const handleEmptySlotClick = (court, timeSlot) => {
+    const handleEmptySlotClick = (courtId, courtName, timeSlot) => {
+        const court = courts.find(c => c._id === courtId);
+        if (!court) return;
+
         // Default 1 hour duration
         const [h, m] = timeSlot.split(':').map(Number);
         const endM = m + 60; // Default 1 hour
@@ -137,52 +137,71 @@ const AdminBooking = () => {
         const finalM = endM % 60;
         const endTime = `${endH.toString().padStart(2, '0')}:${finalM.toString().padStart(2, '0')}`;
 
-        // Calculate initial price (1 hour)
-        const hourlyRate = getPrice(court, selectedDate);
+        const hourlyRate = isWeekend(selectedDate) ? court.weekendPrice : court.weekdayPrice;
 
-        setSelectedSlot({ court, startTime: timeSlot, endTime, price: hourlyRate, hourlyRate });
+        setSelectedSlot({
+            courtId,
+            court: courtName,
+            sportType: court.sportType,
+            startTime: timeSlot,
+            endTime,
+            price: hourlyRate,
+            hourlyRate
+        });
         setFormData({ customerName: '', phone: '', advancePaid: 0 });
         setShowAddModal(true);
     };
 
     // Handle booked slot click
-    const handleBookedSlotClick = (booking) => {
-        setEditingBooking(booking);
+    const handleBookedSlotClick = (booking, courtName) => {
+        setEditingBooking({
+            ...booking,
+            courtName,
+            totalPrice: booking.finalAmount // Ensure total price is set from backend data
+        });
         setFormData({
             customerName: booking.customerName,
-            phone: booking.phone,
-            advancePaid: booking.advancePaid
+            phone: booking.customerPhone,
+            advancePaid: booking.advancePaid || 0,
+            bookingStatus: booking.bookingStatus || 'BOOKED',
+            paymentStatus: booking.paymentStatus || 'PENDING',
+            startTime: booking.startTime, // Allow editing time
+            endTime: booking.endTime
         });
         setShowEditModal(true);
     };
 
     // Add booking
-    const handleAddBooking = (e) => {
+    const handleAddBooking = async (e) => {
         e.preventDefault();
+        try {
+            const payload = {
+                customerName: formData.customerName,
+                customerPhone: formData.phone,
+                sportType: selectedSlot.sportType,
+                courtId: selectedSlot.courtId,
+                bookingDate: dateToString(selectedDate),
+                startTime: selectedSlot.startTime,
+                endTime: selectedSlot.endTime,
+                advancePaid: Number(formData.advancePaid),
+                paymentMode: 'CASH', // Default for quick add
+                discountType: 'NONE',
+                discountValue: 0
+            };
 
-        const newBooking = {
-            id: Date.now(),
-            court: selectedSlot.court,
-            date: dateToString(selectedDate),
-            startTime: selectedSlot.startTime,
-            endTime: selectedSlot.endTime,
-            customerName: formData.customerName,
-            phone: formData.phone,
-            totalPrice: selectedSlot.price,
-            advancePaid: parseFloat(formData.advancePaid) || 0,
-            balance: selectedSlot.price - (parseFloat(formData.advancePaid) || 0),
-            paymentStatus: (parseFloat(formData.advancePaid) || 0) >= selectedSlot.price ? 'paid' : ((parseFloat(formData.advancePaid) || 0) > 0 ? 'balance' : 'advance')
-        };
-
-        setBookings([...bookings, newBooking]);
-        toast.success('Booking created successfully!');
-        setShowAddModal(false);
-        setSelectedSlot(null);
+            const response = await api.post('/admin/bookings', payload);
+            if (response.data.success) {
+                toast.success('Booking created successfully!');
+                setShowAddModal(false);
+                fetchCalendarData(); // Refresh calendar
+            }
+        } catch (error) {
+            toast.error(error.response?.data?.message || 'Failed to create booking');
+        }
     };
 
     // Calculate price when endTime changes
     const handleEndTimeChange = (newEndTime) => {
-        // Calculate duration minutes
         const [startH, startM] = selectedSlot.startTime.split(':').map(Number);
         const [endH, endM] = newEndTime.split(':').map(Number);
         const totalMinutes = (endH * 60 + endM) - (startH * 60 + startM);
@@ -197,30 +216,37 @@ const AdminBooking = () => {
     };
 
     // Update booking
-    const handleUpdateBooking = (e) => {
+    const handleUpdateBooking = async (e) => {
         e.preventDefault();
+        try {
+            const payload = {
+                customerName: formData.customerName,
+                customerPhone: formData.phone,
+                advancePaid: Number(formData.advancePaid),
+                status: formData.bookingStatus,
+                paymentStatus: formData.paymentStatus,
+                startTime: formData.startTime,
+                endTime: formData.endTime,
+                // Include validation helpers
+                courtId: editingBooking.courtId,
+                sportType: editingBooking.sportType,
+                bookingDate: editingBooking.bookingDate,
+                paymentMode: editingBooking.paymentMode,
+                paymentNotes: editingBooking.paymentNotes,
+                discountType: editingBooking.discountType,
+                discountValue: editingBooking.discountValue
+            };
 
-        const totalPrice = editingBooking.totalPrice;
-        const advancePaid = parseFloat(formData.advancePaid) || 0;
-        const balance = totalPrice - advancePaid;
+            console.log('Update Payload:', payload);
+            console.log('Editing Booking:', editingBooking);
 
-        let paymentStatus = 'advance';
-        if (advancePaid >= totalPrice) {
-            paymentStatus = 'paid';
-        } else if (advancePaid > 0) {
-            paymentStatus = 'balance';
+            await api.put(`/admin/bookings/${editingBooking.bookingId}`, payload);
+            toast.success('Booking updated successfully!');
+            setShowEditModal(false);
+            fetchCalendarData();
+        } catch (error) {
+            toast.error(error.response?.data?.message || 'Failed to update booking');
         }
-
-        const updatedBookings = bookings.map(b =>
-            b.id === editingBooking.id
-                ? { ...b, ...formData, advancePaid, balance, paymentStatus }
-                : b
-        );
-
-        setBookings(updatedBookings);
-        toast.success('Booking updated successfully!');
-        setShowEditModal(false);
-        setEditingBooking(null);
     };
 
     // Delete booking
@@ -230,30 +256,35 @@ const AdminBooking = () => {
         setShowDeleteModal(true);
     };
 
-    const confirmDelete = () => {
-        setBookings(bookings.filter(b => b.id !== bookingToDelete.id));
-        toast.success('Booking deleted successfully!');
-        setShowDeleteModal(false);
-        setBookingToDelete(null);
+    const confirmDelete = async () => {
+        try {
+            await api.delete(`/admin/bookings/${bookingToDelete.bookingId}`);
+            toast.success('Booking deleted successfully!');
+            setShowDeleteModal(false);
+            fetchCalendarData();
+        } catch (error) {
+            toast.error('Failed to delete booking');
+        }
     };
 
     // Render booking card
-    const renderBookingCard = (booking) => {
+    const renderBookingCard = (booking, courtName) => {
+        const pStatus = (booking.paymentStatus || '').toUpperCase();
         return (
             <div
                 className="adminbooking-card"
-                onClick={() => handleBookedSlotClick(booking)}
+                onClick={() => handleBookedSlotClick(booking, courtName)}
             >
                 <div>
                     <div className="adminbooking-card-customer">{booking.customerName}</div>
                     <div className="adminbooking-card-time">{booking.startTime} - {booking.endTime}</div>
-                    <div className="adminbooking-card-phone">📞 {booking.phone}</div>
+                    <div className="adminbooking-card-phone">📞 {booking.customerPhone}</div>
                 </div>
                 <div>
-                    <span className={`adminbooking-payment-badge ${booking.paymentStatus}`}>
-                        {booking.paymentStatus === 'paid' && '🟢 Fully Paid'}
-                        {booking.paymentStatus === 'balance' && '🟡 Balance Pending'}
-                        {booking.paymentStatus === 'advance' && '🔴 Advance Pending'}
+                    <span className={`adminbooking-payment-badge ${pStatus.toLowerCase()}`}>
+                        {pStatus === 'PAID' && '🟢 Fully Paid'}
+                        {pStatus === 'PARTIAL' && '🟡 Balance Pending'}
+                        {pStatus === 'PENDING' && '🔴 Advance Pending'}
                     </span>
                 </div>
             </div>
@@ -301,14 +332,20 @@ const AdminBooking = () => {
 
             {/* Calendar Grid */}
             <div className="adminbooking-calendar-wrapper">
-                <div className="adminbooking-calendar-grid">
+                {loading && (
+                    <div className="adminbooking-loading-overlay">
+                        <Spinner animation="border" variant="primary" />
+                    </div>
+                )}
+                <div className="adminbooking-calendar-grid" style={{ gridTemplateColumns: `100px repeat(${calendarData.length}, 1fr)` }}>
                     {/* Time Header */}
                     <div className="adminbooking-time-header">Time</div>
 
                     {/* Court Headers */}
-                    {courts.map(court => (
-                        <div key={court} className="adminbooking-court-header">
-                            {court}
+                    {calendarData.map(court => (
+                        <div key={court.courtId} className="adminbooking-court-header">
+                            {court.courtName}
+                            <div className="small text-muted fw-normal">{court.sportType}</div>
                         </div>
                     ))}
 
@@ -321,19 +358,19 @@ const AdminBooking = () => {
                             </div>
 
                             {/* Court Slots */}
-                            {courts.map(court => {
-                                const booking = getBookingForSlot(court, timeSlot);
+                            {calendarData.map(court => {
+                                const booking = getBookingForSlot(court.courtId, timeSlot);
                                 // Only render the card if it's the START of the booking
                                 const isStart = booking && booking.startTime === timeSlot;
 
                                 return (
                                     <div
-                                        key={`${court}-${timeSlot}`}
+                                        key={`${court.courtId}-${timeSlot}`}
                                         className={`adminbooking-slot-cell ${booking ? 'booked' : 'empty'}`}
-                                        onClick={() => !booking && handleEmptySlotClick(court, timeSlot)}
-                                        style={booking && !isStart ? { borderTop: 'none', color: 'transparent' } : {}}
+                                        onClick={() => !booking && handleEmptySlotClick(court.courtId, court.courtName, timeSlot)}
+                                        style={booking && !isStart ? { borderTop: 'none', color: 'transparent', height: '100%' } : {}}
                                     >
-                                        {isStart && renderBookingCard(booking)}
+                                        {isStart && renderBookingCard(booking, court.courtName)}
                                     </div>
                                 );
                             })}
@@ -406,7 +443,7 @@ const AdminBooking = () => {
                                 type="tel"
                                 placeholder="10-digit mobile number"
                                 required
-                                pattern="[0-9]{10}"
+                                pattern="[0-9\s]*"
                                 value={formData.phone}
                                 onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
                             />
@@ -457,15 +494,33 @@ const AdminBooking = () => {
                 </Modal.Header>
                 <Form onSubmit={handleUpdateBooking}>
                     <Modal.Body className="p-4">
-                        <Form.Group className="mb-3">
-                            <Form.Label className="adminbooking-form-label">Court & Time</Form.Label>
-                            <Form.Control
-                                type="text"
-                                value={editingBooking ? `${editingBooking.court} (${editingBooking.startTime} - ${editingBooking.endTime})` : ''}
-                                className="adminbooking-readonly-field"
-                                readOnly
-                            />
-                        </Form.Group>
+                        <div className="row g-3 mb-3">
+                            <div className="col-md-12">
+                                <Form.Label className="adminbooking-form-label">Court (Read Only)</Form.Label>
+                                <Form.Control
+                                    type="text"
+                                    value={editingBooking?.courtName || ''}
+                                    className="adminbooking-readonly-field"
+                                    readOnly
+                                />
+                            </div>
+                            <div className="col-md-6">
+                                <Form.Label className="adminbooking-form-label">Start Time</Form.Label>
+                                <Form.Control
+                                    type="time"
+                                    value={formData.startTime}
+                                    onChange={(e) => setFormData({ ...formData, startTime: e.target.value })}
+                                />
+                            </div>
+                            <div className="col-md-6">
+                                <Form.Label className="adminbooking-form-label">End Time</Form.Label>
+                                <Form.Control
+                                    type="time"
+                                    value={formData.endTime}
+                                    onChange={(e) => setFormData({ ...formData, endTime: e.target.value })}
+                                />
+                            </div>
+                        </div>
 
                         <Form.Group className="mb-3">
                             <Form.Label className="adminbooking-form-label">Customer Name <span className="text-danger">*</span></Form.Label>
@@ -482,11 +537,36 @@ const AdminBooking = () => {
                             <Form.Control
                                 type="tel"
                                 required
-                                pattern="[0-9]{10}"
+                                pattern="[0-9\s]*"
                                 value={formData.phone}
                                 onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
                             />
                         </Form.Group>
+
+                        <div className="row g-3 mb-3">
+                            <div className="col-md-6">
+                                <Form.Label className="adminbooking-form-label">Booking Status</Form.Label>
+                                <Form.Select
+                                    value={formData.bookingStatus}
+                                    onChange={(e) => setFormData({ ...formData, bookingStatus: e.target.value })}
+                                >
+                                    <option value="BOOKED">Booked</option>
+                                    <option value="CANCELLED">Cancelled</option>
+                                    <option value="COMPLETED">Completed</option>
+                                </Form.Select>
+                            </div>
+                            <div className="col-md-6">
+                                <Form.Label className="adminbooking-form-label">Payment Status</Form.Label>
+                                <Form.Select
+                                    value={formData.paymentStatus}
+                                    onChange={(e) => setFormData({ ...formData, paymentStatus: e.target.value })}
+                                >
+                                    <option value="PAID">Paid</option>
+                                    <option value="PARTIAL">Partial</option>
+                                    <option value="PENDING">Pending</option>
+                                </Form.Select>
+                            </div>
+                        </div>
 
                         <div className="adminbooking-price-display">
                             <div className="adminbooking-price-row">
@@ -502,7 +582,6 @@ const AdminBooking = () => {
                                 <Form.Control
                                     type="number"
                                     min="0"
-                                    max={editingBooking?.totalPrice || 0}
                                     value={formData.advancePaid}
                                     onChange={(e) => setFormData({ ...formData, advancePaid: e.target.value })}
                                 />
