@@ -514,18 +514,31 @@ const updateBooking = async (req, res) => {
         let payment = await Payment.findOne({ bookingId: booking._id }).session(session);
         if (payment) {
             payment.totalAmount = finalAmount;
-            payment.advancePaid = advancePaid || 0;
-            payment.balanceAmount = Math.max(0, finalAmount - (advancePaid || 0));
-            payment.paymentMode = paymentMode;
-            payment.paymentNotes = paymentNotes;
+            // Bidirectional Synchronization Logic:
 
-            // Logic: Use manual status if provided, otherwise auto-calculate
+            // 1. If Status is explicitly set:
             if (paymentStatus) {
+                if (paymentStatus === 'PAID') {
+                    // If Admin says PAID, ensure full amount is captured
+                    payment.advancePaid = finalAmount;
+                } else if (paymentStatus === 'PENDING') {
+                    // If Admin says PENDING, reset advance to 0 (optional, but logical)
+                    payment.advancePaid = 0;
+                } else {
+                    // PARTIAL: Keep entered advancePaid
+                    payment.advancePaid = advancePaid || 0;
+                }
                 payment.status = paymentStatus;
-            } else {
-                payment.status = (advancePaid || 0) <= 0 ? 'PENDING' :
-                    (advancePaid || 0) >= finalAmount ? 'PAID' : 'PARTIAL';
             }
+            // 2. If Status is NOT set, derive from Advance Paid:
+            else {
+                payment.advancePaid = advancePaid || 0;
+                payment.status = (payment.advancePaid <= 0) ? 'PENDING' :
+                    (payment.advancePaid >= finalAmount) ? 'PAID' : 'PARTIAL';
+            }
+
+            // Recalculate Balance
+            payment.balanceAmount = Math.max(0, finalAmount - payment.advancePaid);
 
             await payment.save({ session });
         }

@@ -82,7 +82,7 @@ const AdminBookingList = () => {
         let diffMinutes = (end - start) / 60000;
         if (diffMinutes < 0) diffMinutes += 24 * 60; // Handle overnight if needed (though UI prevents usually)
 
-        const calculatedPrice = Math.ceil((hourlyRate / 60) * diffMinutes);
+        const calculatedPrice = Math.ceil((hourlyRate * diffMinutes) / 60);
 
         // Simple Discount Logic (Flat for now based on previous UI)
         let discount = Number(editFormData.discount) || 0;
