@@ -12,6 +12,7 @@ import AdminReports from './pages/admin/AdminReports/AdminReports';
 import AdminSetting from './pages/admin/AdminSetting/AdminSetting';
 import AdminProfile from './pages/admin/AdminProfile/AdminProfile';
 import AdminNewBooking from './pages/admin/AdminNewBooking/AdminNewBooking';
+import AdminBookingList from './pages/admin/AdminBookingList/AdminBookingList';
 import StaffDashboard from './pages/staff/Staff Dashboard/StaffDashboard';
 import StaffBooking from './pages/staff/Staff Booking/StaffBooking';
 import StaffNewBooking from './pages/staff/Staff New Booking/StaffNewBooking';
@@ -103,6 +104,7 @@ function App() {
           <Route path="management-users" element={<ManagementUsers />} />
           <Route path="courts-pricing" element={<AdminCourts />} />
           <Route path="new-booking" element={<AdminNewBooking />} />
+          <Route path="bookings-list" element={<AdminBookingList />} />
           <Route path="booking-calendar" element={<AdminBooking />} />
           <Route path="recurring-bookings" element={<AdminRecurring />} />
           <Route path="payments" element={<AdminPayment />} />

@@ -23,6 +23,7 @@ const Sidebar = ({ role, isOpen, toggleSidebar }) => {
             { label: 'Management Users', path: '/admin/management-users', icon: <FaUsers /> },
             { label: 'Courts & Pricing', path: '/admin/courts-pricing', icon: <FaMoneyBillWave /> },
             { label: 'New Booking', path: '/admin/new-booking', icon: <FaPlusCircle /> },
+            { label: 'Bookings List', path: '/admin/bookings-list', icon: <FaListAlt /> },
             { label: 'Booking Calendar', path: '/admin/booking-calendar', icon: <FaCalendarAlt /> },
             { label: 'Recurring Bookings', path: '/admin/recurring-bookings', icon: <FaClock /> },
             { label: 'Payments', path: '/admin/payments', icon: <FaMoneyBillWave /> },

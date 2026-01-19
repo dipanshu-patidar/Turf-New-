@@ -1,0 +1,122 @@
+.adminbookinglist-container {
+    padding: 24px;
+    background-color: #f8f9fa;
+    min-height: 100vh;
+}
+
+.adminbookinglist-page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 24px;
+}
+
+.adminbookinglist-title {
+    font-size: 24px;
+    font-weight: 700;
+    color: #343a40;
+    margin-bottom: 4px;
+}
+
+.adminbookinglist-filters {
+    background: white;
+    padding: 20px;
+    border-radius: 12px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.02);
+    margin-bottom: 24px;
+}
+
+.adminbookinglist-filter-row {
+    display: flex;
+    gap: 16px;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.adminbookinglist-filter-group {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.adminbookinglist-table-container {
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.04);
+    overflow: hidden;
+}
+
+.adminbookinglist-table th {
+    background-color: #f8f9fa;
+    color: #6c757d;
+    font-weight: 600;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    padding: 16px;
+    border-bottom: 1px solid #dee2e6;
+}
+
+.adminbookinglist-table td {
+    padding: 16px;
+    vertical-align: middle;
+    color: #495057;
+    font-size: 14px;
+    border-bottom: 1px solid #f1f3f5;
+}
+
+.adminbookinglist-badge {
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.badge-paid {
+    background-color: #d1e7dd;
+    color: #0f5132;
+}
+
+.badge-partial {
+    background-color: #fff3cd;
+    color: #664d03;
+}
+
+.badge-unknown {
+    background-color: #e2e3e5;
+    color: #41464b;
+}
+
+.badge-pending {
+    background-color: #f8d7da;
+    color: #842029;
+}
+
+
+.badge-booked {
+    background-color: #dc3545;
+    color: white;
+}
+
+/* User complained about RED for BOOKED?? Wait, no. Use proper colors. */
+/* Re-reading request: "Booking Status correct this" - likely implies standard logic. */
+/* I will use standard nice colors. */
+.badge-booked {
+    background-color: #cfe2ff;
+    color: #084298;
+}
+
+.badge-completed {
+    background-color: #d1e7dd;
+    color: #0f5132;
+}
+
+.badge-cancelled {
+    background-color: #f8d7da;
+    color: #842029;
+}
+
+.booking-id-text {
+    font-family: monospace;
+    color: #6c757d;
+}

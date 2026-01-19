@@ -5,9 +5,15 @@ import toast from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
 import './AdminNewBooking.css';
 
+import api from '../../../api/axiosInstance';
+
 const AdminNewBooking = () => {
     const navigate = useNavigate();
     const today = new Date().toISOString().split('T')[0];
+
+    // Data State
+    const [courts, setCourts] = useState([]);
+    const [loading, setLoading] = useState(true);
 
     // Form State
     const [formData, setFormData] = useState({
@@ -16,8 +22,8 @@ const AdminNewBooking = () => {
         date: today,
         startTime: '06:00',
         endTime: '07:00',
-        sport: 'Football',
-        court: 'Main Turf',
+        sport: '', // Will be set after fetching courts
+        courtId: '', // Changed from 'court' (name) to 'courtId'
         advancePaid: 0,
         paymentMode: 'Cash',
         notes: ''
@@ -26,39 +32,58 @@ const AdminNewBooking = () => {
     // Pricing Logic State
     const [pricing, setPricing] = useState({
         dayType: 'Weekday',
-        totalPrice: 1200,
-        finalAmount: 1200, // Amount after discount/override
-        remainingBalance: 1200,
-        duration: '1h 0m',
-        hourlyRate: 1200,
-        totalMinutes: 60,
+        totalPrice: 0,
+        finalAmount: 0,
+        remainingBalance: 0,
+        duration: '0h 0m',
+        hourlyRate: 0,
+        totalMinutes: 0,
         discount: 0,
         isPriceOverridden: false
     });
 
-    // Mock Pricing Configuration
-    const pricingConfig = {
-        'Football': { Weekday: 1200, Weekend: 1500 },
-        'Cricket': { Weekday: 1000, Weekend: 1300 },
-        'Badminton': { Weekday: 400, Weekend: 500 },
-        'Pickleball': { Weekday: 600, Weekend: 800 }
-    };
+    // Fetch Courts on Mount
+    useEffect(() => {
+        const fetchCourts = async () => {
+            try {
+                const response = await api.get('/courts');
+                const activeCourts = response.data.filter(c => c.status === 'ACTIVE');
+                setCourts(activeCourts);
 
-    const courtsBySport = {
-        'Football': ['Grass Court', 'Main Court'],
-        'Cricket': ['Grass Court', 'Main Court'],
-        'Badminton': ['Court 1', 'Court 2'],
-        'Pickleball': ['Pickleball Court']
-    };
+                if (activeCourts.length > 0) {
+                    // Set default sport and court
+                    const defaultCourt = activeCourts[0];
+                    setFormData(prev => ({
+                        ...prev,
+                        sport: defaultCourt.sportType,
+                        courtId: defaultCourt._id
+                    }));
+                }
+            } catch (error) {
+                console.error('Error fetching courts:', error);
+                toast.error('Failed to load courts');
+            } finally {
+                setLoading(false);
+            }
+        };
+        fetchCourts();
+    }, []);
+
+    // Derived State for UI
+    const uniqueSports = [...new Set(courts.map(c => c.sportType))];
+    const availableCourts = courts.filter(c => c.sportType === formData.sport);
 
     // Calculate Day Type, Duration, and Price
     useEffect(() => {
+        const selectedCourt = courts.find(c => c._id === formData.courtId);
+        if (!selectedCourt) return;
+
         const dateObj = new Date(formData.date);
         const day = dateObj.getDay();
         const isWeekend = (day === 0 || day === 6);
         const dayType = isWeekend ? 'Weekend' : 'Weekday';
 
-        const hourlyRate = pricingConfig[formData.sport]?.[dayType] || 0;
+        const hourlyRate = isWeekend ? selectedCourt.weekendPrice : selectedCourt.weekdayPrice;
 
         // Calculate Duration
         let durationHours = 0;
@@ -80,12 +105,14 @@ const AdminNewBooking = () => {
         // Auto-Calculate Price if NOT overridden
         let calculatedPrice = pricing.totalPrice;
         if (!pricing.isPriceOverridden) {
+            // Price per minute * minutes
             calculatedPrice = Math.ceil((hourlyRate / 60) * totalMinutes);
         }
 
         // Apply Discount
         const discountAmount = Number(pricing.discount) || 0;
         const finalPayable = Math.max(0, calculatedPrice - discountAmount);
+        // Ensure advance doesn't exceed final payable (visual only here, validation on submit)
 
         // Format Duration
         const hours = Math.floor(totalMinutes / 60);
@@ -97,13 +124,13 @@ const AdminNewBooking = () => {
             dayType,
             totalPrice: calculatedPrice,
             finalAmount: finalPayable,
-            remainingBalance: finalPayable - formData.advancePaid,
+            remainingBalance: Math.max(0, finalPayable - formData.advancePaid),
             duration: durationString,
             totalMinutes,
             hourlyRate: !prev.isPriceOverridden ? hourlyRate : prev.hourlyRate
         }));
 
-    }, [formData.date, formData.sport, formData.startTime, formData.endTime, pricing.discount, pricing.isPriceOverridden, formData.advancePaid]);
+    }, [formData.date, formData.courtId, formData.startTime, formData.endTime, pricing.discount, pricing.isPriceOverridden, formData.advancePaid, courts]);
 
     const handleChange = (e) => {
         const { name, value } = e.target;
@@ -113,10 +140,15 @@ const AdminNewBooking = () => {
         }));
 
         if (name === 'sport') {
-            setFormData(prev => ({
-                ...prev,
-                court: courtsBySport[value][0]
-            }));
+            // When sport changes, select the first available court for that sport
+            const firstCourt = courts.find(c => c.sportType === value);
+            if (firstCourt) {
+                setFormData(prev => ({
+                    ...prev,
+                    sport: value,
+                    courtId: firstCourt._id
+                }));
+            }
         }
     };
 
@@ -146,7 +178,7 @@ const AdminNewBooking = () => {
         toast.success('Price reset to auto-calculation');
     };
 
-    const handleSubmit = (e) => {
+    const handleSubmit = async (e) => {
         e.preventDefault();
 
         // Validation
@@ -175,12 +207,36 @@ const AdminNewBooking = () => {
             return;
         }
 
-        console.log('Admin Booking Saved:', { ...formData, ...pricing });
-        toast.success('Booking saved successfully!');
+        // Prepare Payload
+        const payload = {
+            customerName: formData.customerName,
+            customerPhone: formData.phoneNumber,
+            sportType: formData.sport,
+            courtId: formData.courtId,
+            bookingDate: formData.date,
+            startTime: formData.startTime,
+            endTime: formData.endTime,
+            // If overridden, we might handle discount differently, but for now sending standard logic
+            discountType: pricing.discount > 0 ? 'FLAT' : 'NONE',
+            discountValue: pricing.discount,
+            advancePaid: Number(formData.advancePaid),
+            balanceAmount: pricing.remainingBalance, // Added as per user request to be in payload
+            paymentMode: formData.paymentMode.toUpperCase(), // Backend expects uppercase
+            paymentNotes: formData.notes
+        };
 
-        setTimeout(() => {
-            navigate('/admin/booking-calendar');
-        }, 1500);
+        try {
+            const response = await api.post('/admin/bookings', payload);
+            if (response.data.success) {
+                toast.success('Booking saved successfully!');
+                setTimeout(() => {
+                    navigate('/admin/booking-calendar');
+                }, 1500);
+            }
+        } catch (error) {
+            console.error(error);
+            toast.error(error.response?.data?.message || 'Failed to create booking');
+        }
     };
 
     return (
@@ -271,24 +327,26 @@ const AdminNewBooking = () => {
                                         name="sport"
                                         value={formData.sport}
                                         onChange={handleChange}
+                                        disabled={loading}
                                     >
-                                        <option value="Football">Football</option>
-                                        <option value="Cricket">Cricket</option>
-                                        <option value="Badminton">Badminton</option>
-                                        <option value="Pickleball">Pickleball</option>
+                                        <option value="">Select Sport</option>
+                                        {uniqueSports.map(sport => (
+                                            <option key={sport} value={sport}>{sport}</option>
+                                        ))}
                                     </Form.Select>
                                 </Col>
                                 <Col md={6} className="mb-3">
                                     <Form.Label className="adminnewbooking-form-label">Court</Form.Label>
                                     <Form.Select
                                         className="adminnewbooking-input"
-                                        name="court"
-                                        value={formData.court}
+                                        name="courtId"
+                                        value={formData.courtId}
                                         onChange={handleChange}
-                                        disabled={formData.sport === 'Pickleball'}
+                                        disabled={!formData.sport || loading}
                                     >
-                                        {courtsBySport[formData.sport].map(ct => (
-                                            <option key={ct} value={ct}>{ct}</option>
+                                        <option value="">Select Court</option>
+                                        {availableCourts.map(ct => (
+                                            <option key={ct._id} value={ct._id}>{ct.name}</option>
                                         ))}
                                     </Form.Select>
                                 </Col>

@@ -4,43 +4,67 @@ import { FaPlus, FaEdit, FaCheckCircle, FaBan, FaRupeeSign, FaTrash } from 'reac
 import toast from 'react-hot-toast';
 import './AdminCourts.css'; // Importing collocated CSS
 
-const AdminCourts = () => {
-    // --- Mock Data ---
-    const [courtList, setCourtList] = useState([
-        { id: 1, name: 'Turf A - Football', type: 'Football', weekdayPrice: 1200, weekendPrice: 1500, status: 'Active' },
-        { id: 2, name: 'Turf B - Cricket', type: 'Cricket', weekdayPrice: 1000, weekendPrice: 1300, status: 'Active' },
-        { id: 3, name: 'Court 1 - Badminton', type: 'Badminton', weekdayPrice: 400, weekendPrice: 600, status: 'Inactive' },
-    ]);
+import api from '../../../api/axiosInstance';
 
+const AdminCourts = () => {
     // --- State ---
+    const [courtList, setCourtList] = useState([]);
+    const [loading, setLoading] = useState(false);
+
     const [showModal, setShowModal] = useState(false);
     const [showDeleteModal, setShowDeleteModal] = useState(false);
     const [editingCourt, setEditingCourt] = useState(null); // null means "Add Mode"
     const [courtToDelete, setCourtToDelete] = useState(null);
+
     const [formData, setFormData] = useState({
         name: '',
         type: 'Football',
         weekdayPrice: '',
         weekendPrice: '',
-        status: 'Active'
+        status: 'ACTIVE'
     });
+
+    // --- API Calls ---
+    const fetchCourts = async () => {
+        setLoading(true);
+        try {
+            const response = await api.get('/courts');
+            setCourtList(response.data);
+        } catch (error) {
+            console.error('Error fetching courts:', error);
+            toast.error('Failed to load courts');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    React.useEffect(() => {
+        fetchCourts();
+    }, []);
 
     // --- Handlers ---
     const handleClose = () => {
         setShowModal(false);
         setEditingCourt(null);
-        setFormData({ name: '', type: 'Football', weekdayPrice: '', weekendPrice: '', status: 'Active' });
+        setFormData({ name: '', type: 'Football', weekdayPrice: '', weekendPrice: '', status: 'ACTIVE' });
     };
 
     const handleShowAdd = () => {
         setEditingCourt(null);
-        setFormData({ name: '', type: 'Football', weekdayPrice: '', weekendPrice: '', status: 'Active' });
+        setFormData({ name: '', type: 'Football', weekdayPrice: '', weekendPrice: '', status: 'ACTIVE' });
         setShowModal(true);
     };
 
     const handleShowEdit = (court) => {
         setEditingCourt(court);
-        setFormData({ ...court });
+        // Map backend fields to frontend form if needed, currently they match
+        setFormData({
+            name: court.name,
+            type: court.sportType, // Backend uses sportType
+            weekdayPrice: court.weekdayPrice,
+            weekendPrice: court.weekendPrice,
+            status: court.status
+        });
         setShowModal(true);
     };
 
@@ -55,15 +79,21 @@ const AdminCourts = () => {
         setCourtToDelete(null);
     };
 
-    const confirmDelete = () => {
+    const confirmDelete = async () => {
         if (courtToDelete) {
-            setCourtList(courtList.filter(c => c.id !== courtToDelete.id));
-            toast.success('Court deleted successfully');
-            handleCloseDelete();
+            try {
+                await api.delete(`/courts/${courtToDelete._id}`);
+                setCourtList(courtList.filter(c => c._id !== courtToDelete._id));
+                toast.success('Court deleted successfully');
+                handleCloseDelete();
+            } catch (error) {
+                console.error(error);
+                toast.error(error.response?.data?.message || 'Failed to delete court');
+            }
         }
     };
 
-    const handleSave = (e) => {
+    const handleSave = async (e) => {
         e.preventDefault();
 
         // Basic validation
@@ -72,30 +102,47 @@ const AdminCourts = () => {
             return;
         }
 
-        if (editingCourt) {
-            // Edit Logic
-            const updatedList = courtList.map(c => c.id === editingCourt.id ? { ...c, ...formData } : c);
-            setCourtList(updatedList);
-            toast.success('Court details updated successfully');
-        } else {
-            // Add Logic
-            const newCourt = { id: Date.now(), ...formData };
-            setCourtList([...courtList, newCourt]);
-            toast.success('New court added successfully');
+        const payload = {
+            name: formData.name,
+            sportType: formData.type, // Map frontend 'type' to backend 'sportType'
+            weekdayPrice: Number(formData.weekdayPrice),
+            weekendPrice: Number(formData.weekendPrice),
+            status: formData.status
+        };
+
+        try {
+            if (editingCourt) {
+                // Edit Logic
+                const response = await api.put(`/courts/${editingCourt._id}`, payload);
+                const updatedCourt = response.data.court;
+
+                setCourtList(courtList.map(c => c._id === editingCourt._id ? updatedCourt : c));
+                toast.success('Court details updated successfully');
+            } else {
+                // Add Logic
+                const response = await api.post('/courts', payload);
+                setCourtList([response.data.court, ...courtList]);
+                toast.success('New court added successfully');
+            }
+            handleClose();
+        } catch (error) {
+            console.error(error);
+            toast.error(error.response?.data?.message || 'Operation failed');
         }
-        handleClose();
     };
 
-    const toggleStatus = (id) => {
-        const updatedList = courtList.map(c => {
-            if (c.id === id) {
-                const newStatus = c.status === 'Active' ? 'Inactive' : 'Active';
-                toast.success(`Court ${newStatus === 'Active' ? 'activated' : 'deactivated'}`);
-                return { ...c, status: newStatus };
-            }
-            return c;
-        });
-        setCourtList(updatedList);
+    const toggleStatus = async (court) => {
+        try {
+            const newStatus = court.status === 'ACTIVE' ? 'INACTIVE' : 'ACTIVE';
+            await api.patch(`/courts/${court._id}/status`, { status: newStatus });
+
+            // Optimistic update
+            setCourtList(courtList.map(c => c._id === court._id ? { ...c, status: newStatus } : c));
+            toast.success(`Court ${newStatus === 'ACTIVE' ? 'activated' : 'deactivated'}`);
+        } catch (error) {
+            console.error(error);
+            toast.error('Failed to update status');
+        }
     };
 
     return (
@@ -126,19 +173,19 @@ const AdminCourts = () => {
                     </thead>
                     <tbody>
                         {courtList.map((court) => (
-                            <tr key={court.id}>
+                            <tr key={court._id}>
                                 <td>
                                     <div className="fw-bold">{court.name}</div>
                                 </td>
                                 <td>
                                     <Badge bg="light" text="dark" className="border">
-                                        {court.type}
+                                        {court.sportType}
                                     </Badge>
                                 </td>
                                 <td className="fw-bold text-success">₹ {court.weekdayPrice}</td>
                                 <td className="fw-bold text-primary">₹ {court.weekendPrice}</td>
                                 <td>
-                                    <span className={`admincourts-badge ${court.status === 'Active' ? 'admincourts-badge-active' : 'admincourts-badge-inactive'}`}>
+                                    <span className={`admincourts-badge ${court.status === 'ACTIVE' ? 'admincourts-badge-active' : 'admincourts-badge-inactive'}`}>
                                         {court.status}
                                     </span>
                                 </td>
@@ -156,11 +203,11 @@ const AdminCourts = () => {
                                             <FaTrash />
                                         </button>
 
-                                        {court.status === 'Active' ? (
+                                        {court.status === 'ACTIVE' ? (
                                             <button
                                                 className="admincourts-action-btn delete"
                                                 title="Deactivate"
-                                                onClick={() => { if (window.confirm('Deactivate this court?')) toggleStatus(court.id) }}
+                                                onClick={() => { if (window.confirm('Deactivate this court?')) toggleStatus(court) }}
                                             >
                                                 <FaBan />
                                             </button>
@@ -168,7 +215,7 @@ const AdminCourts = () => {
                                             <button
                                                 className="admincourts-action-btn activate"
                                                 title="Activate"
-                                                onClick={() => { if (window.confirm('Activate this court?')) toggleStatus(court.id) }}
+                                                onClick={() => { if (window.confirm('Activate this court?')) toggleStatus(court) }}
                                             >
                                                 <FaCheckCircle />
                                             </button>
@@ -177,9 +224,14 @@ const AdminCourts = () => {
                                 </td>
                             </tr>
                         ))}
-                        {courtList.length === 0 && (
+                        {courtList.length === 0 && !loading && (
                             <tr>
                                 <td colSpan="6" className="text-center py-4 text-muted">No courts found. Add one to get started.</td>
+                            </tr>
+                        )}
+                        {loading && (
+                            <tr>
+                                <td colSpan="6" className="text-center py-4 text-muted">Loading...</td>
                             </tr>
                         )}
                     </tbody>
@@ -254,9 +306,9 @@ const AdminCourts = () => {
                             <Form.Check
                                 type="switch"
                                 id="court-status-switch"
-                                label={formData.status === 'Active' ? 'Court Active' : 'Court Inactive'}
-                                checked={formData.status === 'Active'}
-                                onChange={(e) => setFormData({ ...formData, status: e.target.checked ? 'Active' : 'Inactive' })}
+                                label={formData.status === 'ACTIVE' ? 'Court Active' : 'Court Inactive'}
+                                checked={formData.status === 'ACTIVE'}
+                                onChange={(e) => setFormData({ ...formData, status: e.target.checked ? 'ACTIVE' : 'INACTIVE' })}
                             />
                         </Form.Group>
                     </Modal.Body>
