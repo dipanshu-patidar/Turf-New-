@@ -63,6 +63,11 @@ const bookingSchema = new mongoose.Schema({
         enum: ['BOOKED', 'CANCELLED', 'COMPLETED'],
         default: 'BOOKED',
     },
+    bookingSource: {
+        type: String,
+        enum: ['MANUAL', 'RECURRING'],
+        default: 'MANUAL',
+    },
 }, { timestamps: true });
 
 module.exports = mongoose.model('Booking', bookingSchema);

@@ -11,7 +11,7 @@ const paymentRoutes = require('./payment.routes');
 const reportsRoutes = require('./reports.routes');
 const settingsRoutes = require('./settings.routes');
 const profileRoutes = require('./profile.routes');
-const staffBookingRoutes = require('./staffBooking.routes');
+const bookingListRoutes = require('./bookingList.routes');
 
 router.get('/health', (req, res) => {
     res.json({ status: 'ok', message: 'Server is running' });
@@ -20,15 +20,22 @@ router.get('/health', (req, res) => {
 router.use('/auth', authRoutes);
 router.use('/users', userRoutes);
 router.use('/courts', courtRoutes);
-router.use('/admin/bookings', bookingRoutes);
 router.use('/calendar', calendarRoutes);
-router.use('/recurring-bookings', recurringBookingRoutes);
+
+// Admin Routes
+router.use('/admin/bookings', bookingRoutes);
 router.use('/admin/dashboard', dashboardRoutes);
 router.use('/admin/payments', paymentRoutes);
 router.use('/admin/reports', reportsRoutes);
 router.use('/admin/settings', settingsRoutes);
 router.use('/admin/profile', profileRoutes);
+
+// Staff/Management Routes
+router.use('/staff/bookings', bookingListRoutes);
+router.use('/staff/profile', profileRoutes);
 router.use('/management/profile', profileRoutes);
-router.use('/staff/bookings', staffBookingRoutes);
+
+// Shared/Other
+router.use('/recurring-bookings', recurringBookingRoutes);
 
 module.exports = router;

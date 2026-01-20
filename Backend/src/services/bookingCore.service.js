@@ -25,6 +25,7 @@ const createSingleBooking = async (bookingData, session) => {
         paymentMode,
         paymentNotes,
         createdBy,
+        bookingSource = 'MANUAL',
         // Optional flag to skip some checks if they were done in bulk
         skipAvailabilityCheck = false
     } = bookingData;
@@ -100,7 +101,8 @@ const createSingleBooking = async (bookingData, session) => {
         discountValue,
         finalAmount,
         createdBy,
-        status: 'BOOKED'
+        status: 'BOOKED',
+        bookingSource
     }], { session });
 
     // 6. Create Slots

@@ -89,7 +89,8 @@ const processRecurringBooking = async (ruleId, externalSession = null) => {
                     paymentNotes: 'Generated via Recurring Rule',
                     discountType: rule.discountType || 'NONE',
                     discountValue: rule.discountValue || 0,
-                    createdBy: rule.createdBy
+                    createdBy: rule.createdBy,
+                    bookingSource: 'RECURRING'
                 }, session);
 
                 results.success++;
