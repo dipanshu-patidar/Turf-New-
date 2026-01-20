@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const moment = require('moment');
 const Booking = require('../models/Booking.model');
 const Payment = require('../models/Payment.model');
 const Court = require('../models/Court.model');
@@ -137,56 +138,67 @@ const getMonthlyReport = async (req, res) => {
                                 revenue: 1,
                                 _id: 0
                             }
-                        }
+                        },
                     ]
                 }
             }
         ]);
 
-        // 2. Get NEW Recurring Rules in this month (for Advance Revenue)
+        const result = {
+            summary: monthlyData[0].summary[0] || { totalBookings: 0, totalCollection: 0, pendingBalance: 0 },
+            dailyTrend: []
+        };
+
+        // 2. Get NEW Recurring Rules in this month (for Advance Revenue & Counts)
         const RecurringBooking = require('../models/RecurringBooking.model');
         const newRulesInMonth = await RecurringBooking.find({
-            createdAt: { $gte: startOfMonth, $lte: endOfMonth },
-            advancePaid: { $gt: 0 }
+            createdAt: { $gte: startOfMonth, $lte: endOfMonth }
         });
 
         let totalAdvanceRevenue = 0;
-        const advanceTrendMap = {}; // day -> amount
+        const advanceTrendMap = {}; // day -> { revenue, bookings }
 
         newRulesInMonth.forEach(rule => {
+            const day = rule.createdAt.getDate();
+            if (!advanceTrendMap[day]) advanceTrendMap[day] = { revenue: 0, bookings: 0 };
+
             const amount = rule.advancePaid || 0;
             totalAdvanceRevenue += amount;
-
-            const day = rule.createdAt.getDate();
-            advanceTrendMap[day] = (advanceTrendMap[day] || 0) + amount;
+            advanceTrendMap[day].revenue += amount;
+            advanceTrendMap[day].bookings += 1; // Count each rule creation as a booking event
         });
 
-        const result = {
-            summary: monthlyData[0].summary[0] || { totalBookings: 0, totalCollection: 0, pendingBalance: 0 },
-            dailyTrend: monthlyData[0].dailyTrend
-        };
-
-        // Merge Advance Revenue
+        // Merge Summary
         result.summary.totalCollection += totalAdvanceRevenue;
+        result.summary.totalBookings += newRulesInMonth.length;
 
-        // Merge Daily Trend
-        const trendMap = {};
-        result.dailyTrend.forEach(d => { trendMap[d.day] = d; });
-
-        Object.keys(advanceTrendMap).forEach(day => {
-            const dayNum = parseInt(day);
-            if (trendMap[dayNum]) {
-                trendMap[dayNum].revenue += advanceTrendMap[dayNum];
-            } else {
-                trendMap[dayNum] = { day: dayNum, bookings: 0, revenue: advanceTrendMap[dayNum] };
-            }
+        // 3. Prepare Daily Trend with ALL days of the month
+        const trendMap = {}; // day -> { bookings, revenue }
+        monthlyData[0].dailyTrend.forEach(d => {
+            trendMap[d.day] = { bookings: d.bookings, revenue: d.revenue };
         });
 
-        result.dailyTrend = Object.values(trendMap).sort((a, b) => a.day - b.day);
+        // Get total days in the month
+        const daysInMonth = moment(startOfMonth).daysInMonth();
+        const dailyTrend = [];
 
-        res.json(result);
+        for (let i = 1; i <= daysInMonth; i++) {
+            const data = trendMap[i] || { bookings: 0, revenue: 0 };
+            const advance = advanceTrendMap[i] || { bookings: 0, revenue: 0 };
+
+            dailyTrend.push({
+                day: i,
+                bookings: data.bookings + advance.bookings,
+                revenue: data.revenue + advance.revenue
+            });
+        }
+
+        result.dailyTrend = dailyTrend;
+
+        res.status(200).json(result);
     } catch (error) {
-        res.status(500).json({ message: error.message });
+        console.error('Error fetching monthly report:', error);
+        res.status(500).json({ message: 'Server Error', error: error.message });
     }
 };
 

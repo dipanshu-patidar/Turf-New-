@@ -177,18 +177,57 @@ const AdminReports = () => {
                 </div>
             </div>
 
-            <div className="adminreports-chart-container">
-                <h5 className="adminreports-chart-title">Monthly Trend - Bookings & Revenue</h5>
-                <ResponsiveContainer width="100%" height={300}>
-                    <LineChart data={monthlyData.dailyTrend}>
-                        <CartesianGrid strokeDasharray="3 3" />
-                        <XAxis dataKey="day" />
-                        <YAxis yAxisId="left" />
-                        <YAxis yAxisId="right" orientation="right" />
-                        <Tooltip />
-                        <Legend />
-                        <Line yAxisId="left" type="monotone" dataKey="bookings" stroke="#E63946" strokeWidth={2} name="Bookings" />
-                        <Line yAxisId="right" type="monotone" dataKey="revenue" stroke="#457B9D" strokeWidth={2} name="Revenue (₹)" />
+            <div className="adminreports-chart-container mt-4">
+                <div className="d-flex justify-content-between align-items-center mb-3">
+                    <h5 className="adminreports-chart-title m-0">Monthly Trend - Bookings & Revenue</h5>
+                    <div className="small text-muted">Showing all days of the month</div>
+                </div>
+                <ResponsiveContainer width="100%" height={350}>
+                    <LineChart data={monthlyData.dailyTrend} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
+                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
+                        <XAxis
+                            dataKey="day"
+                            label={{ value: 'Day of Month', position: 'insideBottom', offset: -5 }}
+                            interval={window.innerWidth < 768 ? 4 : 1}
+                            tick={{ fontSize: 12 }}
+                        />
+                        <YAxis
+                            yAxisId="left"
+                            label={{ value: 'Bookings', angle: -90, position: 'insideLeft' }}
+                            tick={{ fontSize: 12 }}
+                        />
+                        <YAxis
+                            yAxisId="right"
+                            orientation="right"
+                            label={{ value: 'Revenue (₹)', angle: 90, position: 'insideRight' }}
+                            tick={{ fontSize: 12 }}
+                            tickFormatter={(val) => `₹${val >= 1000 ? (val / 1000).toFixed(1) + 'k' : val}`}
+                        />
+                        <Tooltip
+                            contentStyle={{ borderRadius: '10px', border: 'none', boxShadow: '0 4px 15px rgba(0,0,0,0.1)' }}
+                            formatter={(value, name) => [name === 'Revenue (₹)' ? `₹${value.toLocaleString()}` : value, name]}
+                        />
+                        <Legend verticalAlign="top" height={36} />
+                        <Line
+                            yAxisId="left"
+                            type="monotone"
+                            dataKey="bookings"
+                            stroke="#E63946"
+                            strokeWidth={3}
+                            name="Bookings"
+                            dot={{ fill: '#E63946', r: 4 }}
+                            activeDot={{ r: 6 }}
+                        />
+                        <Line
+                            yAxisId="right"
+                            type="monotone"
+                            dataKey="revenue"
+                            stroke="#457B9D"
+                            strokeWidth={3}
+                            name="Revenue (₹)"
+                            dot={{ fill: '#457B9D', r: 4 }}
+                            activeDot={{ r: 6 }}
+                        />
                     </LineChart>
                 </ResponsiveContainer>
             </div>
