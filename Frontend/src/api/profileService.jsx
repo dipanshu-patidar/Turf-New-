@@ -1,14 +1,23 @@
 import axiosInstance from "./axiosInstance";
 
 /**
+ * Helper to get base path based on current URL
+ */
+const getBasePath = () => {
+    const path = window.location.pathname;
+    if (path.startsWith('/management')) return '/management/profile';
+    return '/admin/profile';
+};
+
+/**
  * Service to handle profile related API calls
  */
 const profileService = {
     /**
-     * Fetch current admin profile
+     * Fetch current user profile
      */
     getProfile: async () => {
-        const response = await axiosInstance.get('/admin/profile');
+        const response = await axiosInstance.get(getBasePath());
         return response.data;
     },
 
@@ -17,7 +26,7 @@ const profileService = {
      * @param {FormData} formData - name, email, and optional avatar file
      */
     updateProfile: async (formData) => {
-        const response = await axiosInstance.put('/admin/profile', formData, {
+        const response = await axiosInstance.put(getBasePath(), formData, {
             headers: {
                 'Content-Type': 'multipart/form-data'
             }
@@ -30,7 +39,7 @@ const profileService = {
      * @param {Object} data - { oldPassword, newPassword, confirmPassword }
      */
     changePassword: async (data) => {
-        const response = await axiosInstance.put('/admin/profile/change-password', data);
+        const response = await axiosInstance.put(`${getBasePath()}/change-password`, data);
         return response.data;
     }
 };

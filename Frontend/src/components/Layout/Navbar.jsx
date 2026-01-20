@@ -7,7 +7,7 @@ import profileService from '../../api/profileService';
 const AppNavbar = ({ toggleSidebar, isOpen, role }) => {
     const navigate = useNavigate();
     const [user, setUser] = useState({
-        name: 'Admin User',
+        name: 'Loading...',
         avatar: ''
     });
 

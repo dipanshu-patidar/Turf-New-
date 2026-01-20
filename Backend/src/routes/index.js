@@ -27,5 +27,6 @@ router.use('/admin/payments', paymentRoutes);
 router.use('/admin/reports', reportsRoutes);
 router.use('/admin/settings', settingsRoutes);
 router.use('/admin/profile', profileRoutes);
+router.use('/management/profile', profileRoutes);
 
 module.exports = router;

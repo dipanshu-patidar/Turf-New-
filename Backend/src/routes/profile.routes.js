@@ -5,9 +5,9 @@ const { protect } = require('../middlewares/auth.middleware');
 const { allowRoles } = require('../middlewares/role.middleware');
 const upload = require('../middlewares/upload.middleware');
 
-// All profile routes are restricted to logged-in ADMIN
+// All profile routes are restricted to logged-in users (ADMIN or STAFF/MANAGEMENT)
 router.use(protect);
-router.use(allowRoles('ADMIN'));
+router.use(allowRoles('ADMIN', 'STAFF'));
 
 router.get('/', getProfile);
 router.put('/', upload.single('avatar'), updateProfile);
