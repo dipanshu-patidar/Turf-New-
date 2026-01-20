@@ -142,7 +142,7 @@ const OperationalCharts = ({ trendData, utilizationData, statusData, loading }) 
                         </PieChart>
                     </ResponsiveContainer>
                 </div>
-            </Col>
+            </Col>  
 
             {/* Court Utilization */}
             <Col lg={12}>
