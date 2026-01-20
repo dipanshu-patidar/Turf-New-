@@ -13,6 +13,7 @@ const settingsRoutes = require('./settings.routes');
 const profileRoutes = require('./profile.routes');
 const bookingListRoutes = require('./bookingList.routes');
 const staffCalendarRoutes = require('./staffCalendar.routes');
+const staffDashboardRoutes = require('./staffDashboard.routes');
 
 router.get('/health', (req, res) => {
     res.json({ status: 'ok', message: 'Server is running' });
@@ -35,7 +36,9 @@ router.use('/admin/profile', profileRoutes);
 router.use('/staff/bookings', bookingListRoutes);
 router.use('/staff/calendar', staffCalendarRoutes);
 router.use('/staff/profile', profileRoutes);
+router.use('/staff/dashboard', staffDashboardRoutes);
 router.use('/management/profile', profileRoutes);
+router.use('/management/dashboard', staffDashboardRoutes);
 
 // Shared/Other
 router.use('/recurring-bookings', recurringBookingRoutes);

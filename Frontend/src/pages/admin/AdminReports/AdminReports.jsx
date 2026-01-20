@@ -469,7 +469,7 @@ const AdminReports = () => {
             <Nav variant="tabs" className="adminreports-tabs">
                 <Nav.Item>
                     <Nav.Link active={activeTab === 'daily'} onClick={() => setActiveTab('daily')}>
-                        Daily Report
+                        Daily Manual Report
                     </Nav.Link>
                 </Nav.Item>
                 <Nav.Item>
