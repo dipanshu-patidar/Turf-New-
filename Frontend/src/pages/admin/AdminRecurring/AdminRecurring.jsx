@@ -718,7 +718,7 @@ const AdminRecurring = () => {
                                     <div className="fw-bold mb-1">{viewBooking.recurrenceType}</div>
                                     <div className="d-flex gap-1 flex-wrap">
                                         {viewBooking.daysOfWeek?.map(toFrontendDay).map(day => (
-                                            <Badge key={day} bg="secondary" className="fw-normal">
+                                            <Badge key={day} className="fw-normal booking-badge">
                                                 {day}
                                             </Badge>
                                         ))}

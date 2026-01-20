@@ -38,6 +38,11 @@
     box-shadow: 0 4px 6px rgba(230, 57, 70, 0.2);
 }
 
+.booking-badge{
+    background-color: #d62839;
+    color: #fff;
+}
+
 /* Table Styles */
 .adminrecurring-table-container {
     background: #fff;

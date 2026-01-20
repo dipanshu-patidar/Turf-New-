@@ -1,69 +1,19 @@
-import React, { useState } from 'react';
-import { Table, Button, Badge, Modal, Form } from 'react-bootstrap';
+import React, { useState, useEffect, useCallback } from 'react';
+import { Table, Button, Badge, Modal, Form, Spinner } from 'react-bootstrap';
 import { FaCheckCircle, FaEdit, FaEye, FaRupeeSign, FaTrash } from 'react-icons/fa';
 import toast from 'react-hot-toast';
 import './AdminPayment.css';
+import paymentService from '../../../api/paymentService';
+import api from '../../../api/axiosInstance';
 
 const AdminPayment = () => {
     // Courts configuration
-    const courts = ['All Courts', 'Football', 'Cricket', 'Badminton - Court 1', 'Badminton - Court 2', 'Pickleball'];
+    const [courtList, setCourtList] = useState([]);
     const paymentModes = ['Cash', 'UPI', 'Card', 'Online'];
 
-    // Mock payment data
-    const [payments, setPayments] = useState([
-        {
-            id: 1,
-            bookingRef: 'BK-2026-001',
-            customerName: 'Rahul Sharma',
-            court: 'Football',
-            bookingDate: '2026-01-16',
-            bookingTime: '18:00',
-            totalAmount: 1500,
-            advancePaid: 1500,
-            balancePending: 0,
-            paymentMode: 'UPI',
-            paymentStatus: 'Paid'
-        },
-        {
-            id: 2,
-            bookingRef: 'BK-2026-002',
-            customerName: 'Priya Singh',
-            court: 'Cricket',
-            bookingDate: '2026-01-16',
-            bookingTime: '17:00',
-            totalAmount: 1300,
-            advancePaid: 500,
-            balancePending: 800,
-            paymentMode: 'Cash',
-            paymentStatus: 'Pending'
-        },
-        {
-            id: 3,
-            bookingRef: 'BK-2026-003',
-            customerName: 'Amit Verma',
-            court: 'Badminton - Court 1',
-            bookingDate: '2026-01-17',
-            bookingTime: '09:00',
-            totalAmount: 600,
-            advancePaid: 300,
-            balancePending: 300,
-            paymentMode: 'Card',
-            paymentStatus: 'Pending'
-        },
-        {
-            id: 4,
-            bookingRef: 'BK-2026-004',
-            customerName: 'Sneha Patel',
-            court: 'Pickleball',
-            bookingDate: '2026-01-17',
-            bookingTime: '10:00',
-            totalAmount: 700,
-            advancePaid: 700,
-            balancePending: 0,
-            paymentMode: 'Online',
-            paymentStatus: 'Paid'
-        }
-    ]);
+    // Payment data
+    const [payments, setPayments] = useState([]);
+    const [loading, setLoading] = useState(false);
 
     // Filter states
     const [filters, setFilters] = useState({
@@ -87,62 +37,91 @@ const AdminPayment = () => {
         paymentDate: new Date().toISOString().split('T')[0]
     });
 
+    // Fetch Courts
+    const fetchCourts = async () => {
+        try {
+            const response = await api.get('/courts');
+            setCourtList(response.data);
+        } catch (error) {
+            console.error('Error fetching courts:', error);
+            // toast.error('Failed to load courts');
+        }
+    };
+
+    // Fetch Payments
+    const fetchPayments = useCallback(async () => {
+        setLoading(true);
+        try {
+            const data = await paymentService.getPayments({
+                ...filters,
+                courtId: filters.court === 'All Courts' ? undefined : filters.court
+            });
+            setPayments(data);
+        } catch (error) {
+            console.error('Error fetching payments:', error);
+            toast.error('Failed to load payments');
+        } finally {
+            setLoading(false);
+        }
+    }, [filters]);
+
+    useEffect(() => {
+        fetchCourts();
+    }, []);
+
+    useEffect(() => {
+        fetchPayments();
+    }, [fetchPayments]);
+
     // Handlers
     const handleShowSettle = (payment) => {
-        if (payment.balancePending === 0) {
+        if (payment.balanceAmount === 0) {
             toast.error('No balance pending for this booking');
             return;
         }
         setSelectedPayment(payment);
         setSettlementData({
-            paymentMode: payment.paymentMode,
+            paymentMode: payment.paymentMode || 'Cash',
             paymentDate: new Date().toISOString().split('T')[0]
         });
         setShowSettleModal(true);
     };
 
-    const handleConfirmSettlement = () => {
-        const updatedPayments = payments.map(p => {
-            if (p.id === selectedPayment.id) {
-                return {
-                    ...p,
-                    advancePaid: p.totalAmount,
-                    balancePending: 0,
-                    paymentMode: settlementData.paymentMode,
-                    paymentStatus: 'Paid'
-                };
-            }
-            return p;
-        });
-        setPayments(updatedPayments);
-        toast.success('Balance settled successfully!');
-        setShowSettleModal(false);
-        setSelectedPayment(null);
+    const handleConfirmSettlement = async () => {
+        try {
+            await paymentService.markAsPaid(selectedPayment._id, settlementData);
+            toast.success('Balance settled successfully!');
+            setShowSettleModal(false);
+            setSelectedPayment(null);
+            fetchPayments();
+        } catch (error) {
+            console.error(error);
+            toast.error(error.response?.data?.message || 'Failed to settle balance');
+        }
     };
 
     const handleShowModeUpdate = (payment) => {
         setSelectedPayment(payment);
         setSettlementData({
-            paymentMode: payment.paymentMode,
+            paymentMode: payment.paymentMode || 'Cash',
             paymentDate: new Date().toISOString().split('T')[0]
         });
         setShowModeModal(true);
     };
 
-    const handleUpdateMode = () => {
-        const updatedPayments = payments.map(p => {
-            if (p.id === selectedPayment.id) {
-                return {
-                    ...p,
-                    paymentMode: settlementData.paymentMode
-                };
-            }
-            return p;
-        });
-        setPayments(updatedPayments);
-        toast.success('Payment mode updated successfully!');
-        setShowModeModal(false);
-        setSelectedPayment(null);
+    const handleUpdateMode = async () => {
+        try {
+            await paymentService.updatePaymentMode(selectedPayment._id, {
+                paymentMode: settlementData.paymentMode
+            });
+            toast.success('Payment mode updated successfully!');
+            setShowModeModal(false);
+            setSelectedPayment(null);
+            fetchPayments();
+        } catch (error) {
+            console.error(error);
+            toast.error(error.response?.data?.message || 'Failed to update mode');
+        }
     };
 
     const handleShowView = (payment) => {
@@ -150,38 +129,22 @@ const AdminPayment = () => {
         setShowViewModal(true);
     };
 
-    // Delete handlers
+    // Delete handlers (Note: Backend doesn't have delete currently, but following existing UI)
     const handleShowDelete = (payment) => {
         setPaymentToDelete(payment);
         setShowDeleteModal(true);
     };
 
     const confirmDelete = () => {
-        setPayments(payments.filter(p => p.id !== paymentToDelete.id));
-        toast.success('Payment record deleted successfully');
+        // Backend delete not implemented in requirements, keeping frontend only for now
+        setPayments(payments.filter(p => p._id !== paymentToDelete._id));
+        toast.success('Payment record removed from view');
         setShowDeleteModal(false);
         setPaymentToDelete(null);
     };
 
-    // Filter logic
-    const filteredPayments = payments.filter(payment => {
-        if (filters.court !== 'All Courts' && payment.court !== filters.court) {
-            return false;
-        }
-        if (filters.paymentStatus !== 'All' && payment.paymentStatus !== filters.paymentStatus) {
-            return false;
-        }
-        if (filters.dateFrom && payment.bookingDate < filters.dateFrom) {
-            return false;
-        }
-        if (filters.dateTo && payment.bookingDate > filters.dateTo) {
-            return false;
-        }
-        return true;
-    });
-
     const getPaymentStatusBadge = (status, balance) => {
-        if (status === 'Paid' || balance === 0) {
+        if (status === 'Paid' || status === 'PAID' || balance === 0) {
             return <div className="adminpayment-status-badge adminpayment-status-paid">Fully Paid</div>;
         } else {
             return <div className="adminpayment-status-badge adminpayment-status-pending">Balance Pending</div>;
@@ -222,8 +185,9 @@ const AdminPayment = () => {
                         value={filters.court}
                         onChange={(e) => setFilters({ ...filters, court: e.target.value })}
                     >
-                        {courts.map(court => (
-                            <option key={court} value={court}>{court}</option>
+                        <option value="All Courts">All Courts</option>
+                        {courtList.map(court => (
+                            <option key={court._id} value={court._id}>{court.name}</option>
                         ))}
                     </Form.Select>
                 </div>
@@ -235,7 +199,7 @@ const AdminPayment = () => {
                     >
                         <option value="All">All Status</option>
                         <option value="Paid">Paid</option>
-                        <option value="Pending">Pending</option>
+                        <option value="Partial">Pending</option>
                     </Form.Select>
                 </div>
             </div>
@@ -258,22 +222,28 @@ const AdminPayment = () => {
                         </tr>
                     </thead>
                     <tbody>
-                        {filteredPayments.map((payment) => (
-                            <tr key={payment.id}>
+                        {loading ? (
+                            <tr>
+                                <td colSpan="10" className="text-center py-5">
+                                    <Spinner animation="border" variant="primary" />
+                                    <p className="mt-2 text-muted">Loading payments...</p>
+                                </td>
+                            </tr>
+                        ) : payments.map((payment) => (
+                            <tr key={payment._id}>
                                 <td>
                                     <div className="adminpayment-booking-ref">{payment.bookingRef}</div>
                                 </td>
                                 <td>
-                                    <div className="fw-bold">{payment.customerName}</div>
+                                    <div className="fw-bold text-dark">{payment.customerName}</div>
                                 </td>
                                 <td>
-                                    <Badge bg="light" text="dark" className="border fw-normal px-2 py-1">
-                                        {payment.court}
+                                    <Badge bg="white" text="dark" className="border fw-normal px-2 py-1 text-muted">
+                                        {payment.courtName}
                                     </Badge>
                                 </td>
                                 <td>
-                                    <div className="text-nowrap">{new Date(payment.bookingDate).toLocaleDateString('en-IN')}</div>
-                                    <div className="text-muted small">{payment.bookingTime}</div>
+                                    <div className="text-nowrap" style={{ fontSize: '0.9rem' }}>{payment.bookingDateTime}</div>
                                 </td>
                                 <td>
                                     <span className="adminpayment-amount total text-nowrap">₹ {payment.totalAmount}</span>
@@ -282,23 +252,23 @@ const AdminPayment = () => {
                                     <span className="adminpayment-amount advance text-nowrap">₹ {payment.advancePaid}</span>
                                 </td>
                                 <td>
-                                    <span className="adminpayment-amount balance text-nowrap">₹ {payment.balancePending}</span>
+                                    <span className="adminpayment-amount balance text-nowrap">₹ {payment.balanceAmount}</span>
                                 </td>
                                 <td>
-                                    <span className={`adminpayment-mode-badge adminpayment-mode-${payment.paymentMode.toLowerCase()}`}>
-                                        {payment.paymentMode}
+                                    <span className={`adminpayment-mode-badge adminpayment-mode-${payment.paymentMode ? payment.paymentMode.toLowerCase() : 'cash'}`}>
+                                        {payment.paymentMode || 'CASH'}
                                     </span>
                                 </td>
                                 <td>
-                                    {getPaymentStatusBadge(payment.paymentStatus, payment.balancePending)}
+                                    {getPaymentStatusBadge(payment.status, payment.balanceAmount)}
                                 </td>
                                 <td>
-                                    <div className="d-flex">
+                                    <div className="d-flex align-items-center gap-1">
                                         <button
                                             className="adminpayment-action-btn settle"
                                             title="Mark Balance as Paid"
                                             onClick={() => handleShowSettle(payment)}
-                                            disabled={payment.balancePending === 0}
+                                            disabled={payment.balanceAmount === 0}
                                         >
                                             <FaCheckCircle />
                                         </button>
@@ -327,7 +297,7 @@ const AdminPayment = () => {
                                 </td>
                             </tr>
                         ))}
-                        {filteredPayments.length === 0 && (
+                        {!loading && payments.length === 0 && (
                             <tr>
                                 <td colSpan="10" className="text-center py-4 text-muted">
                                     No payment records found.
@@ -360,7 +330,7 @@ const AdminPayment = () => {
                         <div className="adminpayment-summary-row total">
                             <span className="adminpayment-summary-label">Balance to Settle:</span>
                             <span className="adminpayment-summary-value balance">
-                                ₹ {selectedPayment?.balancePending || 0}
+                                ₹ {selectedPayment?.balanceAmount || 0}
                             </span>
                         </div>
                     </div>
@@ -446,12 +416,12 @@ const AdminPayment = () => {
                     </div>
                     <div className="mb-3">
                         <strong>Court:</strong>
-                        <div className="mt-1">{selectedPayment?.court}</div>
+                        <div className="mt-1">{selectedPayment?.courtName}</div>
                     </div>
                     <div className="mb-3">
                         <strong>Booking Date & Time:</strong>
                         <div className="mt-1">
-                            {selectedPayment && new Date(selectedPayment.bookingDate).toLocaleDateString('en-IN')} at {selectedPayment?.bookingTime}
+                            {selectedPayment?.bookingDateTime}
                         </div>
                     </div>
                     <div className="adminpayment-summary-box">
@@ -465,7 +435,7 @@ const AdminPayment = () => {
                         </div>
                         <div className="adminpayment-summary-row total">
                             <span>Balance Pending:</span>
-                            <span className="adminpayment-summary-value balance">₹ {selectedPayment?.balancePending}</span>
+                            <span className="adminpayment-summary-value balance">₹ {selectedPayment?.balanceAmount}</span>
                         </div>
                     </div>
                     <div className="mb-3">
@@ -479,7 +449,7 @@ const AdminPayment = () => {
                     <div className="mb-3">
                         <strong>Payment Status:</strong>
                         <div className="mt-1">
-                            {selectedPayment && getPaymentStatusBadge(selectedPayment.paymentStatus, selectedPayment.balancePending)}
+                            {selectedPayment && getPaymentStatusBadge(selectedPayment.status, selectedPayment.balanceAmount)}
                         </div>
                     </div>
                 </Modal.Body>

@@ -77,9 +77,26 @@
 .adminpayment-table {
     margin-bottom: 0;
     width: 100%;
-    min-width: 1200px;
+    min-width: 1300px;
     display: table;
-    table-layout: fixed;
+    border-collapse: separate;
+    border-spacing: 0;
+}
+
+.adminpayment-table th {
+    background-color: #fff !important;
+    color: #000;
+    font-weight: 700;
+    font-size: 0.9rem;
+    padding: 1rem 0.75rem;
+    border-bottom: 2px solid #f1f3f5;
+    white-space: nowrap;
+}
+
+.adminpayment-table td {
+    padding: 1.25rem 0.75rem;
+    vertical-align: middle;
+    border-bottom: 1px solid #f1f3f5;
 }
 
 /* Add scrollbar styling */
@@ -129,39 +146,39 @@
 
 /* Status Badges */
 .adminpayment-status-badge {
-    padding: 0.5rem 1rem;
+    padding: 0.4rem 0.75rem;
     border-radius: 50px;
-    font-size: 0.75rem;
-    font-weight: 700;
+    font-size: 0.7rem;
+    font-weight: 800;
     text-transform: uppercase;
     display: inline-block;
     letter-spacing: 0.5px;
-    min-width: 120px;
+    min-width: 140px;
     text-align: center;
 }
 
 .adminpayment-status-paid {
-    background-color: #d1e7dd;
-    color: #0f5132;
+    background-color: #e6f4ea;
+    color: #1e7e34;
 }
 
 .adminpayment-status-pending {
-    background-color: #fff3cd;
-    color: #856404;
+    background-color: #fff8e1;
+    color: #f57c00;
 }
 
 /* Payment Mode Badge */
 .adminpayment-mode-badge {
-    padding: 0.4rem 0.8rem;
-    border-radius: 10px;
-    font-size: 0.75rem;
-    font-weight: 600;
-    background-color: #e7f3ff;
-    color: #0056b3;
+    padding: 0.25rem 0.75rem;
+    border-radius: 6px;
+    font-size: 0.7rem;
+    font-weight: 700;
+    background-color: #f1f8ff;
+    color: #0366d6;
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    border: 1px solid #cfe2ff;
+    border: 1px solid #d1e9ff;
 }
 
 .adminpayment-mode-upi {
@@ -192,16 +209,16 @@
 .adminpayment-action-btn {
     border: none;
     background: transparent;
-    padding: 0.4rem;
+    padding: 0.25rem;
     border-radius: 4px;
-    margin-right: 0.25rem;
-    transition: background-color 0.2s;
-    color: #6c757d;
+    transition: all 0.2s;
+    color: #868e96;
+    font-size: 1rem;
 }
 
 .adminpayment-action-btn:hover {
-    background-color: #e9ecef;
-    color: #212529;
+    background-color: #f1f3f5;
+    color: #495057;
 }
 
 .adminpayment-action-btn.settle:hover {
