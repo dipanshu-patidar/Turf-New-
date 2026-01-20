@@ -11,13 +11,16 @@ const {
 const { protect } = require('../middlewares/auth.middleware');
 const { allowRoles } = require('../middlewares/role.middleware');
 
-// All routes are protected and restricted to ADMIN
+// All routes require authentication
 router.use(protect);
-router.use(allowRoles('ADMIN'));
 
+// Publicly available to all logged-in users (STAFF & ADMIN)
+router.get('/', allowRoles('ADMIN', 'STAFF'), getAllCourts);
+router.get('/:id', allowRoles('ADMIN', 'STAFF'), getCourtById);
+
+// Management actions restricted to ADMIN only
+router.use(allowRoles('ADMIN'));
 router.post('/', createCourt);
-router.get('/', getAllCourts);
-router.get('/:id', getCourtById);
 router.put('/:id', updateCourt);
 router.patch('/:id/status', updateCourtStatus);
 router.delete('/:id', deleteCourt);

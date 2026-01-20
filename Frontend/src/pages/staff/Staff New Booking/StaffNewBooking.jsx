@@ -1,13 +1,20 @@
 import React, { useState, useEffect } from 'react';
-import { Row, Col, Form, Button, Card, Badge } from 'react-bootstrap';
+import { Row, Col, Form, Button, Card, Badge, Spinner } from 'react-bootstrap';
 import { FaUser, FaCalendarAlt, FaTableTennis, FaWallet, FaSave, FaTimes } from 'react-icons/fa';
 import toast from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
 import './StaffNewBooking.css';
+import courtService from '../../../api/courtService';
+import staffBookingService from '../../../api/staffBookingService';
 
 const StaffNewBooking = () => {
     const navigate = useNavigate();
     const today = new Date().toISOString().split('T')[0];
+
+    // Data State
+    const [courts, setCourts] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [saving, setSaving] = useState(false);
 
     // Form State
     const [formData, setFormData] = useState({
@@ -16,8 +23,8 @@ const StaffNewBooking = () => {
         date: today,
         startTime: '06:00',
         endTime: '07:00',
-        sport: 'Football',
-        court: 'Main Turf',
+        sport: '',
+        courtId: '',
         advancePaid: 0,
         paymentMode: 'Cash'
     });
@@ -25,41 +32,57 @@ const StaffNewBooking = () => {
     // Pricing Logic State
     const [pricing, setPricing] = useState({
         dayType: 'Weekday',
-        totalPrice: 1200,
-        remainingBalance: 1200,
-        duration: 1,
-        hourlyRate: 1200
+        totalPrice: 0,
+        remainingBalance: 0,
+        duration: '0 Hours',
+        hourlyRate: 0
     });
 
-    // Mock Pricing Configuration
-    const pricingConfig = {
-        'Football': { Weekday: 1200, Weekend: 1500 },
-        'Cricket': { Weekday: 1000, Weekend: 1300 },
-        'Badminton': { Weekday: 400, Weekend: 500 },
-        'Pickleball': { Weekday: 600, Weekend: 800 }
-    };
+    // Fetch Courts on Mount
+    useEffect(() => {
+        const fetchCourts = async () => {
+            try {
+                const data = await courtService.getCourts();
+                setCourts(data);
 
-    const courtsBySport = {
-        'Football': ['Grass Court', 'Main Court'],
-        'Cricket': ['Grass Court', 'Main Court'],
-        'Badminton': ['Court 1', 'Court 2'],
-        'Pickleball': ['Pickleball Court']
-    };
+                // Set default sport and court if possible
+                if (data.length > 0) {
+                    const firstSport = data[0].sportType;
+                    const firstCourt = data.find(c => c.sportType === firstSport);
 
-    // Calculate Day Type and Price
+                    setFormData(prev => ({
+                        ...prev,
+                        sport: firstSport,
+                        courtId: firstCourt ? firstCourt._id : ''
+                    }));
+                }
+            } catch (error) {
+                console.error('Error fetching courts:', error);
+                toast.error('Failed to load courts');
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchCourts();
+    }, []);
+
     // Calculate Day Type, Duration, and Price
     useEffect(() => {
+        if (!formData.courtId || !formData.date) return;
+
+        const selectedCourt = courts.find(c => c._id === formData.courtId);
+        if (!selectedCourt) return;
+
         const dateObj = new Date(formData.date);
         const day = dateObj.getDay();
         const isWeekend = (day === 0 || day === 6); // 0 is Sunday, 6 is Saturday
         const dayType = isWeekend ? 'Weekend' : 'Weekday';
 
-        const hourlyRate = pricingConfig[formData.sport]?.[dayType] || 0;
+        const hourlyRate = isWeekend ? selectedCourt.weekendPrice : selectedCourt.weekdayPrice;
 
         // Calculate Duration
-        let durationHours = 0;
         let totalMinutes = 0;
-
         if (formData.startTime && formData.endTime) {
             const [startHour, startMin] = formData.startTime.split(':').map(Number);
             const [endHour, endMin] = formData.endTime.split(':').map(Number);
@@ -69,51 +92,56 @@ const StaffNewBooking = () => {
 
             if (endTotalMins > startTotalMins) {
                 totalMinutes = endTotalMins - startTotalMins;
-                durationHours = totalMinutes / 60;
             }
         }
 
-        // Pricing: (HourlyRate / 60) * TotalMinutes
-        const totalPrice = Math.ceil((hourlyRate / 60) * totalMinutes);
+        // Pricing: (HourlyRate / 4) * (TotalMinutes / 15) to match backend slot logic
+        const totalPrice = (hourlyRate / 4) * (totalMinutes / 15);
 
-        // Format Duration String (e.g., "1h 15m")
+        // Format Duration String
         const hours = Math.floor(totalMinutes / 60);
         const minutes = totalMinutes % 60;
         const durationString = minutes > 0 ? `${hours}h ${minutes}m` : `${hours} Hours`;
 
-        setPricing(prev => ({
-            ...prev,
+        setPricing({
             dayType: dayType,
             totalPrice: totalPrice,
-            remainingBalance: totalPrice - formData.advancePaid,
+            remainingBalance: Math.max(0, totalPrice - (parseFloat(formData.advancePaid) || 0)),
             duration: durationString,
-            totalMinutes: totalMinutes,
             hourlyRate: hourlyRate
-        }));
-    }, [formData.date, formData.sport, formData.advancePaid, formData.startTime, formData.endTime]);
+        });
+    }, [formData.date, formData.courtId, formData.advancePaid, formData.startTime, formData.endTime, courts]);
 
     const handleChange = (e) => {
         const { name, value } = e.target;
+
+        if (name === 'sport') {
+            const firstCourtForSport = courts.find(c => c.sportType === value);
+            setFormData(prev => ({
+                ...prev,
+                sport: value,
+                courtId: firstCourtForSport ? firstCourtForSport._id : ''
+            }));
+            return;
+        }
+
         setFormData(prev => ({
             ...prev,
             [name]: value
         }));
-
-        // Reset court if sport changes
-        if (name === 'sport') {
-            setFormData(prev => ({
-                ...prev,
-                court: courtsBySport[value][0]
-            }));
-        }
     };
 
-    const handleSubmit = (e) => {
+    const handleSubmit = async (e) => {
         e.preventDefault();
 
         // Basic Validation
-        if (!formData.customerName || !formData.phoneNumber) {
+        if (!formData.customerName || !formData.phoneNumber || !formData.courtId) {
             toast.error('Please fill in all required fields');
+            return;
+        }
+
+        if (formData.phoneNumber.length !== 10) {
+            toast.error('Please enter a valid 10-digit phone number');
             return;
         }
 
@@ -122,14 +150,8 @@ const StaffNewBooking = () => {
             return;
         }
 
-        if (formData.phoneNumber.length < 10) {
-            toast.error('Please enter a valid phone number');
-            return;
-        }
-
         const [startHour, startMin] = formData.startTime.split(':').map(Number);
         const [endHour, endMin] = formData.endTime.split(':').map(Number);
-
         const startTotalMins = startHour * 60 + startMin;
         const endTotalMins = endHour * 60 + endMin;
 
@@ -138,19 +160,31 @@ const StaffNewBooking = () => {
             return;
         }
 
-        if (startTotalMins % 15 !== 0 || endTotalMins % 15 !== 0) {
-            toast.error('Bookings must be in 15-minute intervals');
-            return;
+        setSaving(true);
+        try {
+            await staffBookingService.createBooking({
+                customerName: formData.customerName,
+                phoneNumber: formData.phoneNumber,
+                bookingDate: formData.date,
+                startTime: formData.startTime,
+                endTime: formData.endTime,
+                courtId: formData.courtId,
+                sport: formData.sport,
+                advancePaid: Number(formData.advancePaid),
+                remainingBalance: pricing.remainingBalance,
+                paymentMode: formData.paymentMode.toUpperCase()
+            });
+
+            toast.success('Booking saved successfully!');
+            setTimeout(() => {
+                navigate('/management/booking-calendar');
+            }, 1000);
+        } catch (error) {
+            console.error('Save Error:', error);
+            toast.error(error.response?.data?.message || 'Failed to save booking');
+        } finally {
+            setSaving(false);
         }
-
-        // Mock Save
-        console.log('Saving Booking:', { ...formData, ...pricing });
-        toast.success('Booking saved successfully!');
-
-        // Redirect to calendar or dashboard
-        setTimeout(() => {
-            navigate('/management/booking-calendar');
-        }, 1500);
     };
 
     return (
@@ -243,23 +277,21 @@ const StaffNewBooking = () => {
                                         value={formData.sport}
                                         onChange={handleChange}
                                     >
-                                        <option value="Football">Football</option>
-                                        <option value="Cricket">Cricket</option>
-                                        <option value="Badminton">Badminton</option>
-                                        <option value="Pickleball">Pickleball</option>
+                                        {[...new Set(courts.map(c => c.sportType))].map(sport => (
+                                            <option key={sport} value={sport}>{sport}</option>
+                                        ))}
                                     </Form.Select>
                                 </Col>
                                 <Col md={6} className="mb-3">
                                     <Form.Label className="newbooking-form-label">Court</Form.Label>
                                     <Form.Select
                                         className="newbooking-input"
-                                        name="court"
-                                        value={formData.court}
+                                        name="courtId"
+                                        value={formData.courtId}
                                         onChange={handleChange}
-                                        disabled={formData.sport === 'Pickleball'}
                                     >
-                                        {courtsBySport[formData.sport].map(ct => (
-                                            <option key={ct} value={ct}>{ct}</option>
+                                        {courts.filter(c => c.sportType === formData.sport).map(ct => (
+                                            <option key={ct._id} value={ct._id}>{ct.name}</option>
                                         ))}
                                     </Form.Select>
                                 </Col>
@@ -344,10 +376,25 @@ const StaffNewBooking = () => {
                     </Row>
 
                     <div className="newbooking-actions">
-                        <Button variant="danger" type="submit" className="newbooking-btn-save">
-                            <FaSave className="me-2" /> Save Booking
+                        <Button
+                            variant="danger"
+                            type="submit"
+                            className="newbooking-btn-save"
+                            disabled={saving || loading}
+                        >
+                            {(saving || loading) ? (
+                                <Spinner animation="border" size="sm" className="me-2" />
+                            ) : (
+                                <FaSave className="me-2" />
+                            )}
+                            {saving ? 'Saving...' : 'Save Booking'}
                         </Button>
-                        <Button variant="outline-secondary" className="newbooking-btn-cancel" onClick={() => navigate('/management/booking-calendar')}>
+                        <Button
+                            variant="outline-secondary"
+                            className="newbooking-btn-cancel"
+                            onClick={() => navigate('/management/booking-calendar')}
+                            disabled={saving}
+                        >
                             <FaTimes className="me-2" /> Cancel
                         </Button>
                     </div>

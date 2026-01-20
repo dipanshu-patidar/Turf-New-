@@ -121,7 +121,7 @@ const StaffBooking = () => {
         let totalMinutes = (endH * 60 + endM) - (startH * 60 + startM);
         if (totalMinutes < 15) totalMinutes = 15; // Minimum 15 mins
 
-        const price = Math.ceil((selectedSlot.hourlyRate / 60) * totalMinutes);
+        const price = (selectedSlot.hourlyRate / 4) * (totalMinutes / 15);
         setSelectedSlot(prev => ({ ...prev, endTime: newEndTime, price }));
     };
 

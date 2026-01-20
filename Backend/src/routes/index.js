@@ -11,6 +11,7 @@ const paymentRoutes = require('./payment.routes');
 const reportsRoutes = require('./reports.routes');
 const settingsRoutes = require('./settings.routes');
 const profileRoutes = require('./profile.routes');
+const staffBookingRoutes = require('./staffBooking.routes');
 
 router.get('/health', (req, res) => {
     res.json({ status: 'ok', message: 'Server is running' });
@@ -28,5 +29,6 @@ router.use('/admin/reports', reportsRoutes);
 router.use('/admin/settings', settingsRoutes);
 router.use('/admin/profile', profileRoutes);
 router.use('/management/profile', profileRoutes);
+router.use('/staff/bookings', staffBookingRoutes);
 
 module.exports = router;
