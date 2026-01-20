@@ -35,6 +35,14 @@ const bookingListService = {
     cancelBooking: async (id) => {
         const response = await axiosInstance.patch(`/staff/bookings/${id}/cancel`);
         return response.data;
+    },
+
+    /**
+     * Delete a booking permanently
+     */
+    deleteBooking: async (id) => {
+        const response = await axiosInstance.delete(`/staff/bookings/${id}`);
+        return response.data;
     }
 };
 

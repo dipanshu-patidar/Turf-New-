@@ -67,6 +67,16 @@ const getBookingsList = async (req, res) => {
             // Exclude record if filtered by paymentStatus
             if (paymentStatus && ps !== paymentStatus) return null;
 
+            // Dynamic Status Logic
+            let displayStatus = b.status;
+            if (b.status === 'BOOKED') {
+                const now = moment();
+                const bookingEnd = moment(moment(b.bookingDate).format('YYYY-MM-DD') + ' ' + b.endTime, 'YYYY-MM-DD HH:mm');
+                if (now.isAfter(bookingEnd)) {
+                    displayStatus = 'COMPLETED';
+                }
+            }
+
             return {
                 bookingId: b._id.toString(),
                 customerName: b.customerName,
@@ -74,11 +84,13 @@ const getBookingsList = async (req, res) => {
                 courtName: b.courtId ? `${b.courtId.sportType} - ${b.courtId.name}` : 'N/A',
                 bookingDate: moment(b.bookingDate).format('YYYY-MM-DD'),
                 timeSlot: `${b.startTime} - ${b.endTime}`,
+                startTime: b.startTime,
+                endTime: b.endTime,
                 totalAmount: b.finalAmount,
                 advancePaid: payment ? payment.advancePaid : 0,
                 dueBalance: payment ? payment.balanceAmount : b.finalAmount,
                 paymentStatus: ps,
-                status: b.status // BOOKED, CANCELLED, COMPLETED
+                status: displayStatus // Dynamically calculated
             };
         }));
 
@@ -363,10 +375,43 @@ const cancelBooking = async (req, res) => {
     }
 };
 
+/**
+ * @desc    Delete Booking (Full Deletion)
+ * @route   DELETE /api/staff/bookings/:id
+ */
+const deleteBooking = async (req, res) => {
+    const session = await mongoose.startSession();
+    session.startTransaction();
+
+    try {
+        const booking = await Booking.findById(req.params.id).session(session);
+        if (!booking) throw new Error('Booking not found');
+
+        // 1. Delete Slots
+        await BookingSlot.deleteMany({ bookingId: booking._id }).session(session);
+
+        // 2. Delete Payment
+        await Payment.deleteMany({ bookingId: booking._id }).session(session);
+
+        // 3. Delete Booking
+        await Booking.deleteOne({ _id: booking._id }).session(session);
+
+        await session.commitTransaction();
+        res.status(200).json({ success: true, message: 'Booking deleted permanently' });
+
+    } catch (error) {
+        await session.abortTransaction();
+        res.status(400).json({ success: false, message: error.message });
+    } finally {
+        session.endSession();
+    }
+};
+
 module.exports = {
     getBookingsList,
     getBookingDetails,
     createStaffBooking,
     updateBooking,
-    cancelBooking
+    cancelBooking,
+    deleteBooking
 };

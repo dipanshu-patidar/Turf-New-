@@ -5,7 +5,8 @@ const {
     getBookingDetails,
     createStaffBooking,
     updateBooking,
-    cancelBooking
+    cancelBooking,
+    deleteBooking
 } = require('../controllers/bookingList.controller');
 const { protect } = require('../middlewares/auth.middleware');
 const { allowRoles } = require('../middlewares/role.middleware');
@@ -19,5 +20,6 @@ router.get('/:id', getBookingDetails);
 router.post('/', createStaffBooking);
 router.put('/:id', updateBooking);
 router.patch('/:id/cancel', cancelBooking);
+router.delete('/:id', deleteBooking);
 
 module.exports = router;

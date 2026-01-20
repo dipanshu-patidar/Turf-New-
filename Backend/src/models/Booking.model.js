@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const moment = require('moment');
 
 const bookingSchema = new mongoose.Schema({
     customerName: {
@@ -68,6 +69,19 @@ const bookingSchema = new mongoose.Schema({
         enum: ['MANUAL', 'RECURRING'],
         default: 'MANUAL',
     },
+    recurringRuleId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'RecurringBooking',
+        required: false
+    }
 }, { timestamps: true });
+
+// Normalize date to midnight before saving
+bookingSchema.pre('save', function (next) {
+    if (this.bookingDate) {
+        this.bookingDate = moment(this.bookingDate).startOf('day').toDate();
+    }
+    next();
+});
 
 module.exports = mongoose.model('Booking', bookingSchema);

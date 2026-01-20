@@ -241,7 +241,41 @@ const AdminRecurring = () => {
             return;
         }
 
-        // Prepare Payload
+        // 1. Check Availability First
+        try {
+            const checkPayload = {
+                courtId: formData.courtId,
+                startDate: formData.startDate,
+                endDate: formData.endDate,
+                startTime: formData.fixedTime,
+                endTime: formData.endTime,
+                daysOfWeek: formData.fixedDays.map(toBackendDay),
+                recurrenceType: formData.recurrenceType
+            };
+
+            const availabilityRes = await api.post('/staff/calendar/check-availability', checkPayload);
+            const { available, conflicts, checkedDates } = availabilityRes.data;
+
+            if (!available) {
+                if (conflicts.length === checkedDates) {
+                    toast.error('Double Booking: This slot is ALREADY fully booked for all selected dates. Please choose another time.');
+                    return;
+                }
+
+                // Partial conflicts - alert user
+                const conflictDates = conflicts.slice(0, 3).map(c => c.date).join(', ');
+                const moreCount = conflicts.length > 3 ? ` and ${conflicts.length - 3} more` : '';
+
+                if (!window.confirm(`Warning: ${conflicts.length} dates are already booked (${conflictDates}${moreCount}). These dates will be SKIPPED. Do you want to continue?`)) {
+                    return;
+                }
+            }
+        } catch (error) {
+            console.error('Availability check failed:', error);
+            // If check fails (network etc), we might still allow submission but it's safer to block or warn
+        }
+
+        // 2. Prepare Payload for creation/update
         const payload = {
             customerName: formData.customerName,
             customerPhone: formData.phone,

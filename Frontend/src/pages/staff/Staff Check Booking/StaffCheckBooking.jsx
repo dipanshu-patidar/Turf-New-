@@ -19,8 +19,8 @@ const StaffCheckBooking = () => {
     const [courts, setCourts] = useState([]);
     const [searchTerm, setSearchTerm] = useState('');
 
-    const [showCancelModal, setShowCancelModal] = useState(false);
-    const [bookingToCancel, setBookingToCancel] = useState(null);
+    const [showDeleteModal, setShowDeleteModal] = useState(false);
+    const [bookingToDelete, setBookingToDelete] = useState(null);
     const [showViewModal, setShowViewModal] = useState(false);
     const [showEditModal, setShowEditModal] = useState(false);
     const [selectedBooking, setSelectedBooking] = useState(null);
@@ -148,23 +148,23 @@ const StaffCheckBooking = () => {
         setFilters(prev => ({ ...prev, [name]: value }));
     };
 
-    const handleShowCancel = (booking) => {
-        setBookingToCancel(booking);
-        setShowCancelModal(true);
+    const handleShowDelete = (booking) => {
+        setBookingToDelete(booking);
+        setShowDeleteModal(true);
     };
 
-    const confirmCancel = async () => {
-        if (!bookingToCancel) return;
+    const confirmDelete = async () => {
+        if (!bookingToDelete) return;
         setSaving(true);
         try {
-            const response = await bookingListService.cancelBooking(bookingToCancel.bookingId);
+            const response = await bookingListService.deleteBooking(bookingToDelete.bookingId);
             if (response.success) {
-                toast.success('Booking cancelled successfully');
-                setShowCancelModal(false);
+                toast.success('Booking deleted permanently');
+                setShowDeleteModal(false);
                 fetchBookings();
             }
         } catch (error) {
-            toast.error(error.response?.data?.message || 'Failed to cancel booking');
+            toast.error(error.response?.data?.message || 'Failed to delete booking');
         } finally {
             setSaving(false);
         }
@@ -314,8 +314,8 @@ const StaffCheckBooking = () => {
                                                 {booking.status !== 'CANCELLED' && (
                                                     <button
                                                         className="checkbooking-action-btn delete"
-                                                        title="Cancel Booking"
-                                                        onClick={() => handleShowCancel(booking)}
+                                                        title="Delete Booking"
+                                                        onClick={() => handleShowDelete(booking)}
                                                     >
                                                         <FaTrash />
                                                     </button>
@@ -337,21 +337,22 @@ const StaffCheckBooking = () => {
                 </div>
             </div>
 
-            {/* Cancel Confirmation Modal */}
-            <Modal show={showCancelModal} onHide={() => setShowCancelModal(false)} centered>
+            {/* Delete Confirmation Modal */}
+            <Modal show={showDeleteModal} onHide={() => setShowDeleteModal(false)} centered>
                 <Modal.Body className="text-center pt-4 pb-4">
                     <div className="mb-3 text-danger">
                         <FaTimesCircle size={50} />
                     </div>
-                    <h5 className="fw-bold mb-2">Cancel Booking?</h5>
+                    <h5 className="fw-bold mb-2">Delete Booking?</h5>
                     <p className="text-muted">
-                        Are you sure you want to cancel the booking for <strong>{bookingToCancel?.customerName}</strong>?
-                        <br />Reference: #{bookingToCancel?.bookingId.slice(-6).toUpperCase()}
+                        Are you sure you want to permanently delete the booking for <strong>{bookingToDelete?.customerName}</strong>?
+                        <br />Reference: #{bookingToDelete?.bookingId.slice(-6).toUpperCase()}
+                        <br /><small className="text-danger">This will remove all associated slots and payment data!</small>
                     </p>
                     <div className="d-flex justify-content-center gap-2 mt-4">
-                        <Button variant="light" onClick={() => setShowCancelModal(false)} disabled={saving}>No, Keep it</Button>
-                        <Button variant="danger" onClick={confirmCancel} disabled={saving}>
-                            {saving ? <Spinner animation="border" size="sm" /> : 'Yes, Cancel'}
+                        <Button variant="light" onClick={() => setShowDeleteModal(false)} disabled={saving}>Cancel</Button>
+                        <Button variant="danger" onClick={confirmDelete} disabled={saving}>
+                            {saving ? <Spinner animation="border" size="sm" /> : 'Yes, Delete'}
                         </Button>
                     </div>
                 </Modal.Body>

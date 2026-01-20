@@ -4,6 +4,8 @@ const Payment = require('../models/Payment.model');
 const Court = require('../models/Court.model');
 const { generateSlots } = require('./slotGenerator.service');
 const { calculatePrice } = require('./pricing.service');
+const { checkSlotAvailability, throwConflictError } = require('./slotValidation.service');
+const { normalizeToMidnight } = require('../utils/dateUtils');
 
 /**
  * Core service to handle single booking creation logic.
@@ -26,9 +28,13 @@ const createSingleBooking = async (bookingData, session) => {
         paymentNotes,
         createdBy,
         bookingSource = 'MANUAL',
+        recurringRuleId = null,
         // Optional flag to skip some checks if they were done in bulk
         skipAvailabilityCheck = false
     } = bookingData;
+
+    // Normalize Date immediately
+    const normalizedDate = normalizeToMidnight(bookingDate);
 
     // 1. Validate Court
     const court = await Court.findById(courtId).session(session);
@@ -47,26 +53,20 @@ const createSingleBooking = async (bookingData, session) => {
 
     // 3. Check Slot Availability
     if (!skipAvailabilityCheck) {
-        const rawConflicts = await BookingSlot.find({
-            courtId,
-            bookingDate: new Date(bookingDate),
-            slotTime: { $in: slots }
-        }).populate('bookingId').session(session);
-
-        const activeConflicts = rawConflicts.filter(slot =>
-            slot.bookingId && slot.bookingId.status === 'BOOKED'
-        );
-
-        if (activeConflicts.length > 0) {
-            const takenTimes = [...new Set(activeConflicts.map(s => s.slotTime))].join(', ');
-            throw new Error(`Slots already booked: ${takenTimes}`);
+        const availability = await checkSlotAvailability(courtId, normalizedDate, startTime, endTime, session);
+        if (!availability.available) {
+            throwConflictError(availability.conflicts);
         }
 
         // Clean up "Zombie" slots (from CANCELLED/COMPLETED)
-        if (rawConflicts.length > 0) {
-            const zombieIds = rawConflicts.map(s => s._id);
-            await BookingSlot.deleteMany({ _id: { $in: zombieIds } }).session(session);
-        }
+        // Since we have a partial index on status: BOOKED, we don't strictly NEED to delete them,
+        // but it's good practice to keep the collection clean.
+        await BookingSlot.deleteMany({
+            courtId,
+            bookingDate: normalizedDate,
+            slotTime: { $in: slots },
+            status: { $ne: 'BOOKED' }
+        }).session(session);
     }
 
     // 4. Calculate Pricing
@@ -92,7 +92,7 @@ const createSingleBooking = async (bookingData, session) => {
         customerPhone,
         sportType,
         courtId,
-        bookingDate: new Date(bookingDate),
+        bookingDate: normalizedDate,
         startTime,
         endTime,
         totalSlots: slots.length,
@@ -102,15 +102,17 @@ const createSingleBooking = async (bookingData, session) => {
         finalAmount,
         createdBy,
         status: 'BOOKED',
-        bookingSource
+        bookingSource,
+        recurringRuleId
     }], { session });
 
     // 6. Create Slots
     const bookingSlots = slots.map(time => ({
         bookingId: booking[0]._id,
         courtId,
-        bookingDate: new Date(bookingDate),
-        slotTime: time
+        bookingDate: normalizedDate,
+        slotTime: time,
+        status: 'BOOKED'
     }));
 
     await BookingSlot.insertMany(bookingSlots, { session });

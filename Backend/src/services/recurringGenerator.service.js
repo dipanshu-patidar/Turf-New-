@@ -1,6 +1,7 @@
 const RecurringBooking = require('../models/RecurringBooking.model');
 const { createSingleBooking } = require('./bookingCore.service');
 const mongoose = require('mongoose');
+const { normalizeToMidnight } = require('../utils/dateUtils');
 
 // Helper: Get Day Index (MON = 1, SUN = 0 or 7 depending on lib, let's standardize)
 const DAYS_MAP = {
@@ -18,28 +19,28 @@ const generateDates = (rule) => {
     // But for initial creation, we might want to respect startDate even if today.
     // Let's assume startDate is standard.
 
-    let currentDate = new Date(rule.startDate);
-    const endDate = rule.endDate ? new Date(rule.endDate) : new Date(currentDate);
+    let currentDate = normalizeToMidnight(rule.startDate);
+    let endDate = rule.endDate ? normalizeToMidnight(rule.endDate) : new Date(currentDate);
 
     // If no end date, generate for next 3 months by default (as a reasonable limit)
     if (!rule.endDate) {
         endDate.setMonth(endDate.getMonth() + 3);
     }
 
-    // Set times to midnight for accurate comparison
-    currentDate.setHours(0, 0, 0, 0);
-    endDate.setHours(0, 0, 0, 0);
+    // Ensure times are at midnight (redundant but safe)
+    currentDate = normalizeToMidnight(currentDate);
+    endDate = normalizeToMidnight(endDate);
 
     const targetDayIndexes = rule.daysOfWeek?.map(d => DAYS_MAP[d]);
 
     while (currentDate <= endDate) {
         if (rule.recurrenceType === 'WEEKLY') {
             if (targetDayIndexes.includes(currentDate.getDay())) {
-                dates.push(new Date(currentDate));
+                dates.push(normalizeToMidnight(currentDate));
             }
         } else if (rule.recurrenceType === 'MONTHLY') {
             if (currentDate.getDate() === rule.fixedDate) {
-                dates.push(new Date(currentDate));
+                dates.push(normalizeToMidnight(currentDate));
             }
         }
 
@@ -90,7 +91,8 @@ const processRecurringBooking = async (ruleId, externalSession = null) => {
                     discountType: rule.discountType || 'NONE',
                     discountValue: rule.discountValue || 0,
                     createdBy: rule.createdBy,
-                    bookingSource: 'RECURRING'
+                    bookingSource: 'RECURRING',
+                    recurringRuleId: rule._id
                 }, session);
 
                 results.success++;

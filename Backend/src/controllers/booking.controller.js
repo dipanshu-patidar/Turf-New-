@@ -1,12 +1,15 @@
 const Booking = require('../models/Booking.model');
+const moment = require('moment');
 const BookingSlot = require('../models/BookingSlot.model');
 const Payment = require('../models/Payment.model');
 const Court = require('../models/Court.model');
 const { generateSlots } = require('../services/slotGenerator.service');
 const { calculatePrice } = require('../services/pricing.service');
 const mongoose = require('mongoose');
+const { normalizeToMidnight } = require('../utils/dateUtils');
 
 const { createSingleBooking } = require('../services/bookingCore.service');
+const { checkSlotAvailability, throwConflictError } = require('../services/slotValidation.service');
 
 // @desc    Create new booking
 // @route   POST /api/admin/bookings
@@ -50,11 +53,12 @@ const createBooking = async (req, res) => {
 const checkAvailability = async (req, res) => {
     try {
         const { courtId, bookingDate, startTime, endTime } = req.body;
+        const normalizedDate = normalizeToMidnight(bookingDate);
         const slots = generateSlots(startTime, endTime);
 
         const rawConflicts = await BookingSlot.find({
             courtId,
-            bookingDate: new Date(bookingDate),
+            bookingDate: normalizedDate,
             slotTime: { $in: slots }
         }).populate('bookingId');
 
@@ -136,8 +140,21 @@ const getAllBookings = async (req, res) => {
 
         const bookingsWithPayment = bookings.map(booking => {
             const payment = payments.find(p => p.bookingId.toString() === booking._id.toString());
+
+            // Dynamic Status Logic
+            let displayStatus = booking.status;
+            if (booking.status === 'BOOKED') {
+                const now = moment();
+                const bookingEnd = moment(moment(booking.bookingDate).format('YYYY-MM-DD') + ' ' + booking.endTime, 'YYYY-MM-DD HH:mm');
+                if (now.isAfter(bookingEnd)) {
+                    displayStatus = 'COMPLETED';
+                }
+            }
+
             return {
                 ...booking.toObject(),
+                id: booking._id.toString(), // Explicit string ID
+                status: displayStatus,
                 paymentStatus: payment ? payment.status : 'UNKNOWN',
                 paymentDetails: payment
             };
@@ -173,9 +190,32 @@ const updateBookingStatus = async (req, res) => {
             throw new Error('Booking not found');
         }
 
-        // If cancelling, remove slots so others can book
-        if (status === 'CANCELLED' && booking.status !== 'CANCELLED') {
-            await BookingSlot.deleteMany({ bookingId: booking._id }).session(session);
+        // Update slots status instead of deleting to maintain history/audit
+        if (status === 'CANCELLED' || status === 'COMPLETED') {
+            await BookingSlot.updateMany(
+                { bookingId: booking._id },
+                { status: status },
+                { session }
+            );
+        } else if (status === 'BOOKED' && booking.status !== 'BOOKED') {
+            // Re-booking a cancelled/completed slot
+            // Need to check availability again
+            const availability = await checkSlotAvailability(
+                booking.courtId,
+                normalizeToMidnight(booking.bookingDate),
+                booking.startTime,
+                booking.endTime,
+                session,
+                booking._id
+            );
+            if (!availability.available) {
+                throwConflictError(availability.conflicts);
+            }
+            await BookingSlot.updateMany(
+                { bookingId: booking._id },
+                { status: 'BOOKED' },
+                { session }
+            );
         }
 
         // If un-cancelling (re-booking), we should check availability again strictly speaking,
@@ -260,6 +300,8 @@ const updateBooking = async (req, res) => {
             paymentStatus // Added explicit payment status
         } = req.body;
 
+        const normalizedDate = normalizeToMidnight(bookingDate);
+
         const booking = await Booking.findById(req.params.id).session(session);
         if (!booking) {
             throw new Error('Booking not found');
@@ -268,7 +310,7 @@ const updateBooking = async (req, res) => {
         // --- 1. Handle Schedule/Court Changes & Slot Management ---
         const isScheduleChanged =
             booking.courtId.toString() !== courtId ||
-            new Date(booking.bookingDate).toISOString() !== new Date(bookingDate).toISOString() ||
+            normalizeToMidnight(booking.bookingDate).toISOString() !== normalizedDate.toISOString() ||
             booking.startTime !== startTime ||
             booking.endTime !== endTime;
 
@@ -296,26 +338,9 @@ const updateBooking = async (req, res) => {
 
             if (isScheduleChanged || !wasActiveStatus) {
                 // A1. Check Conflicts (Exclude THIS booking's slots)
-                const rawConflicts = await BookingSlot.find({
-                    courtId,
-                    bookingDate: new Date(bookingDate),
-                    slotTime: { $in: potentialSlots },
-                    bookingId: { $ne: booking._id }
-                }).populate('bookingId').session(session);
-
-                const activeConflicts = rawConflicts.filter(slot =>
-                    slot.bookingId && slot.bookingId.status === 'BOOKED'
-                );
-
-                if (activeConflicts.length > 0) {
-                    const takenTimes = [...new Set(activeConflicts.map(s => s.slotTime))].join(', ');
-                    throw new Error(`Slots already booked: ${takenTimes}`);
-                }
-
-                // --- CRITICAL FIX: Clean up "Zombie" slots ---
-                if (rawConflicts.length > 0) {
-                    const zombieIds = rawConflicts.map(s => s._id);
-                    await BookingSlot.deleteMany({ _id: { $in: zombieIds } }).session(session);
+                const availability = await checkSlotAvailability(courtId, normalizedDate, startTime, endTime, session, booking._id);
+                if (!availability.available) {
+                    throwConflictError(availability.conflicts);
                 }
 
                 // A2. Update Amounts based on new schedule
@@ -341,7 +366,8 @@ const updateBooking = async (req, res) => {
                     bookingId: booking._id,
                     courtId,
                     bookingDate: new Date(bookingDate),
-                    slotTime: time
+                    slotTime: time,
+                    status: 'BOOKED'
                 }));
                 await BookingSlot.insertMany(bookingSlotDocs, { session });
 
@@ -396,7 +422,7 @@ const updateBooking = async (req, res) => {
         booking.customerPhone = customerPhone;
         booking.sportType = sportType;
         booking.courtId = courtId;
-        booking.bookingDate = new Date(bookingDate);
+        booking.bookingDate = normalizedDate;
         booking.startTime = startTime;
         booking.endTime = endTime;
         booking.totalSlots = totalSlots;

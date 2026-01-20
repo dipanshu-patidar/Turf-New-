@@ -2,6 +2,8 @@ const Booking = require('../models/Booking.model');
 const Court = require('../models/Court.model');
 const Payment = require('../models/Payment.model');
 
+const moment = require('moment');
+
 /**
  * @desc    Get all bookings for a specific day grouped by court
  * @route   GET /api/calendar/day
@@ -56,8 +58,19 @@ const getDayCalendar = async (req, res) => {
                 .filter(b => b.courtId._id.toString() === court._id.toString())
                 .map(b => {
                     const payment = paymentMap[b._id.toString()];
+
+                    // Dynamic Status Logic
+                    let displayStatus = b.status;
+                    if (b.status === 'BOOKED') {
+                        const now = moment();
+                        const bookingEnd = moment(moment(b.bookingDate).format('YYYY-MM-DD') + ' ' + b.endTime, 'YYYY-MM-DD HH:mm');
+                        if (now.isAfter(bookingEnd)) {
+                            displayStatus = 'COMPLETED';
+                        }
+                    }
+
                     return {
-                        bookingId: b._id,
+                        bookingId: b._id.toString(),
                         customerName: b.customerName,
                         customerPhone: b.customerPhone,
                         sportType: b.sportType,
@@ -70,7 +83,7 @@ const getDayCalendar = async (req, res) => {
                         paymentStatus: payment ? payment.status : 'PENDING',
                         paymentMode: payment ? payment.paymentMode : 'CASH',
                         paymentNotes: payment ? payment.paymentNotes : '',
-                        bookingStatus: b.status,
+                        bookingStatus: displayStatus,
                         finalAmount: b.finalAmount,
                         advancePaid: payment ? payment.advancePaid : 0,
                         balanceAmount: payment ? payment.balanceAmount : b.finalAmount

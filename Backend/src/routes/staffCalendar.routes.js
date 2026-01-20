@@ -3,7 +3,9 @@ const router = express.Router();
 const {
     getStaffDayCalendar,
     updateStaffCalendarBooking,
-    cancelStaffCalendarBooking
+    cancelStaffCalendarBooking,
+    deleteStaffCalendarBooking,
+    checkAvailability
 } = require('../controllers/staffCalendar.controller');
 const { protect } = require('../middlewares/auth.middleware');
 const { allowRoles } = require('../middlewares/role.middleware');
@@ -29,5 +31,12 @@ router.put('/bookings/:id', updateStaffCalendarBooking);
  * @desc    Cancel booking from calendar
  */
 router.patch('/bookings/:id/cancel', cancelStaffCalendarBooking);
+router.delete('/bookings/:id', deleteStaffCalendarBooking);
+
+/**
+ * @route   POST /api/staff/calendar/check-availability
+ * @desc    Check slot availability across multiple dates (recurring)
+ */
+router.post('/check-availability', checkAvailability);
 
 module.exports = router;

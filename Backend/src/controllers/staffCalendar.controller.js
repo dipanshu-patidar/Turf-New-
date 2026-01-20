@@ -7,6 +7,9 @@ const Payment = require('../models/Payment.model');
 const Settings = require('../models/Settings.model');
 const { generateSlots } = require('../services/slotGenerator.service');
 const { calculatePrice } = require('../services/pricing.service');
+const { generateDates } = require('../services/recurringGenerator.service');
+const { checkSlotAvailability, throwConflictError } = require('../services/slotValidation.service');
+const { normalizeToMidnight } = require('../utils/dateUtils');
 
 /**
  * @desc    Get Day Calendar (Staff View)
@@ -19,8 +22,8 @@ const getStaffDayCalendar = async (req, res) => {
             return res.status(400).json({ success: false, message: 'Date is required' });
         }
 
-        const queryDate = moment(date).startOf('day').toDate();
-        const endOfDay = moment(date).endOf('day').toDate();
+        const queryDate = normalizeToMidnight(date);
+        const endOfDay = moment(queryDate).endOf('day').toDate();
 
         // 1. Fetch all ACTIVE courts
         const courts = await Court.find({ status: 'ACTIVE' }).sort({ createdAt: 1 });
@@ -116,16 +119,16 @@ const updateStaffCalendarBooking = async (req, res) => {
             const slots = generateSlots(startTime, endTime);
 
             // Check conflicts
-            const conflicts = await BookingSlot.find({
-                courtId: booking.courtId,
-                bookingDate: booking.bookingDate,
-                slotTime: { $in: slots },
-                bookingId: { $ne: booking._id }
-            }).populate('bookingId').session(session);
-
-            const activeConflicts = conflicts.filter(s => s.bookingId && s.bookingId.status === 'BOOKED');
-            if (activeConflicts.length > 0) {
-                throw new Error('New time slot overlaps with another booking');
+            const availability = await checkSlotAvailability(
+                booking.courtId,
+                normalizeToMidnight(booking.bookingDate),
+                startTime,
+                endTime,
+                session,
+                booking._id
+            );
+            if (!availability.available) {
+                throwConflictError(availability.conflicts);
             }
 
             // Update slots
@@ -133,8 +136,9 @@ const updateStaffCalendarBooking = async (req, res) => {
             await BookingSlot.insertMany(slots.map(s => ({
                 bookingId: booking._id,
                 courtId: booking.courtId,
-                bookingDate: booking.bookingDate,
-                slotTime: s
+                bookingDate: normalizeToMidnight(booking.bookingDate),
+                slotTime: s,
+                status: 'BOOKED'
             })), { session });
 
             booking.startTime = startTime;
@@ -190,8 +194,12 @@ const cancelStaffCalendarBooking = async (req, res) => {
         booking.status = 'CANCELLED';
         await booking.save({ session });
 
-        // Remove slots
-        await BookingSlot.deleteMany({ bookingId: booking._id }).session(session);
+        // Update slots status instead of deleting
+        await BookingSlot.updateMany(
+            { bookingId: booking._id },
+            { status: 'CANCELLED' },
+            { session }
+        );
 
         // Audit update for payment
         const payment = await Payment.findOne({ bookingId: booking._id }).session(session);
@@ -211,8 +219,83 @@ const cancelStaffCalendarBooking = async (req, res) => {
     }
 };
 
+const checkAvailability = async (req, res) => {
+    try {
+        const { courtId, startDate, endDate, startTime, endTime, daysOfWeek, recurrenceType } = req.body;
+
+        // Mock a rule for generateDates
+        const ruleMock = {
+            startDate: normalizeToMidnight(startDate),
+            endDate: normalizeToMidnight(endDate),
+            recurrenceType: recurrenceType || 'WEEKLY',
+            daysOfWeek: daysOfWeek || [],
+            fixedDate: req.body.fixedDate
+        };
+
+        const dates = generateDates(ruleMock);
+        const conflicts = [];
+
+        for (const date of dates) {
+            const availability = await checkSlotAvailability(courtId, date, startTime, endTime);
+            if (!availability.available) {
+                conflicts.push({
+                    date: date.toISOString().split('T')[0],
+                    reason: availability.message
+                });
+            }
+        }
+
+        res.status(200).json({
+            success: true,
+            available: conflicts.length === 0,
+            conflicts,
+            checkedDates: dates.length
+        });
+
+    } catch (error) {
+        console.error(error);
+        res.status(400).json({ success: false, message: error.message });
+    }
+};
+
+/**
+ * @desc    Delete Booking from Calendar (Staff - Full Deletion)
+ * @route   DELETE /api/staff/calendar/bookings/:id
+ */
+const deleteStaffCalendarBooking = async (req, res) => {
+    const session = await mongoose.startSession();
+    session.startTransaction();
+
+    try {
+        const { id } = req.params;
+        const booking = await Booking.findById(id).session(session);
+
+        if (!booking) throw new Error('Booking not found');
+
+        // 1. Delete Slots
+        await BookingSlot.deleteMany({ bookingId: booking._id }).session(session);
+
+        // 2. Delete Payment
+        await Payment.deleteMany({ bookingId: booking._id }).session(session);
+
+        // 3. Delete Booking
+        await Booking.deleteOne({ _id: booking._id }).session(session);
+
+        await session.commitTransaction();
+        res.status(200).json({ success: true, message: 'Booking deleted permanently' });
+
+    } catch (error) {
+        await session.abortTransaction();
+        res.status(400).json({ success: false, message: error.message });
+    } finally {
+        session.endSession();
+    }
+};
+
 module.exports = {
     getStaffDayCalendar,
     updateStaffCalendarBooking,
-    cancelStaffCalendarBooking
+    cancelStaffCalendarBooking,
+    deleteStaffCalendarBooking,
+    checkAvailability
 };

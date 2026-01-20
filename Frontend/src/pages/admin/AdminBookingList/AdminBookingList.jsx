@@ -221,6 +221,15 @@ const AdminBookingList = () => {
         }
     };
 
+    const formatTime12h = (time24) => {
+        if (!time24) return '';
+        const [hours, minutes] = time24.split(':');
+        const h = parseInt(hours);
+        const ampm = h >= 12 ? 'PM' : 'AM';
+        const h12 = h % 12 || 12;
+        return `${h12.toString().padStart(2, '0')}:${minutes} ${ampm}`;
+    };
+
     return (
         <div className="adminbookinglist-container">
             {/* Header & Filters */}
@@ -297,7 +306,7 @@ const AdminBookingList = () => {
                                 </td>
                                 <td>
                                     <div>{new Date(booking.bookingDate).toLocaleDateString()}</div>
-                                    <small className="text-muted">{booking.startTime} - {booking.endTime}</small>
+                                    <small className="text-muted">{formatTime12h(booking.startTime)} - {formatTime12h(booking.endTime)}</small>
                                 </td>
                                 <td>
                                     <span className="fw-bold text-info">

@@ -211,6 +211,22 @@ const AdminBooking = () => {
             return;
         }
 
+        // Check for overlaps with existing bookings on the same court
+        const courtData = calendarData.find(c => c.courtId === selectedSlot.courtId);
+        if (courtData) {
+            const hasOverlap = courtData.slots.some(b => {
+                // If we are editing, skip the current booking itself
+                // But handleEndTimeChange is used in Add New Booking, so we check all.
+                // For Add Modal:
+                return (selectedSlot.startTime < b.endTime && newEndTime > b.startTime);
+            });
+
+            if (hasOverlap) {
+                toast.error("Double Booking: The extended time slot overlaps with another booking.");
+                return;
+            }
+        }
+
         const price = Math.ceil((selectedSlot.hourlyRate / 60) * totalMinutes);
         setSelectedSlot(prev => ({ ...prev, endTime: newEndTime, price }));
     };
@@ -267,6 +283,15 @@ const AdminBooking = () => {
         }
     };
 
+    const formatTime12h = (time24) => {
+        if (!time24) return '';
+        const [hours, minutes] = time24.split(':');
+        const h = parseInt(hours);
+        const ampm = h >= 12 ? 'PM' : 'AM';
+        const h12 = h % 12 || 12;
+        return `${h12.toString().padStart(2, '0')}:${minutes} ${ampm}`;
+    };
+
     // Render booking card
     const renderBookingCard = (booking, courtName) => {
         const pStatus = (booking.paymentStatus || '').toUpperCase();
@@ -277,7 +302,7 @@ const AdminBooking = () => {
             >
                 <div>
                     <div className="adminbooking-card-customer">{booking.customerName}</div>
-                    <div className="adminbooking-card-time">{booking.startTime} - {booking.endTime}</div>
+                    <div className="adminbooking-card-time">{formatTime12h(booking.startTime)} - {formatTime12h(booking.endTime)}</div>
                     <div className="adminbooking-card-phone">📞 {booking.customerPhone}</div>
                 </div>
                 <div>
@@ -354,7 +379,7 @@ const AdminBooking = () => {
                         <React.Fragment key={timeSlot}>
                             {/* Time Cell */}
                             <div className="adminbooking-time-cell">
-                                {timeSlot}
+                                {formatTime12h(timeSlot)}
                             </div>
 
                             {/* Court Slots */}
@@ -409,8 +434,8 @@ const AdminBooking = () => {
                             <div className="col-md-4">
                                 <Form.Label className="adminbooking-form-label">Start Time</Form.Label>
                                 <Form.Control
-                                    type="time"
-                                    value={selectedSlot?.startTime || ''}
+                                    type="text"
+                                    value={formatTime12h(selectedSlot?.startTime) || ''}
                                     className="adminbooking-readonly-field"
                                     readOnly
                                 />

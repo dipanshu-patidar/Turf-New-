@@ -133,9 +133,27 @@ const StaffBooking = () => {
     const handleEndTimeChange = (newEndTime) => {
         const [startH, startM] = selectedSlot.startTime.split(':').map(Number);
         const [endH, endM] = newEndTime.split(':').map(Number);
+        const [h, m] = selectedSlot.startTime.split(':').map(Number);
 
         let totalMinutes = (endH * 60 + endM) - (startH * 60 + startM);
-        if (totalMinutes < 15) totalMinutes = 15;
+        if (totalMinutes < 15) {
+            toast.error("End time must be after start time");
+            return;
+        }
+
+        // Check for overlaps with existing bookings on the same court
+        const courtData = calendarData.find(c => c.courtId === selectedSlot.courtId);
+        if (courtData) {
+            const hasOverlap = courtData.slots.some(b => {
+                // Return true if overlap exists
+                return (selectedSlot.startTime < b.endTime && newEndTime > b.startTime);
+            });
+
+            if (hasOverlap) {
+                toast.error("Double Booking: The extended time slot overlaps with another booking.");
+                return;
+            }
+        }
 
         const price = (selectedSlot.hourlyRate / 4) * (totalMinutes / 15);
         setSelectedSlot(prev => ({ ...prev, endTime: newEndTime, price }));
@@ -205,16 +223,16 @@ const StaffBooking = () => {
         }
     };
 
-    const handleCancelBooking = async () => {
-        if (!window.confirm('Are you sure you want to cancel this booking?')) return;
+    const handleDeleteBooking = async () => {
+        if (!window.confirm('Are you sure you want to permanently delete this booking? This will remove all database records.')) return;
         setIsSaving(true);
         try {
-            await api.patch(`/staff/calendar/bookings/${selectedBooking.bookingId}/cancel`);
-            toast.success('Booking cancelled successfully');
+            await api.delete(`/staff/calendar/bookings/${selectedBooking.bookingId}`);
+            toast.success('Booking deleted permanently');
             setShowEditModal(false);
             fetchCalendarData();
         } catch (error) {
-            toast.error(error.response?.data?.message || 'Failed to cancel booking');
+            toast.error(error.response?.data?.message || 'Failed to delete booking');
         } finally {
             setIsSaving(false);
         }
@@ -553,8 +571,8 @@ const StaffBooking = () => {
                     </Modal.Body>
                     <Modal.Footer className="border-0 bg-light d-flex justify-content-between">
                         {selectedBooking?.isDeletable ? (
-                            <Button variant="outline-danger" onClick={handleCancelBooking} disabled={isSaving}>
-                                <FaTrash className="me-2" /> Cancel Booking
+                            <Button variant="danger" onClick={handleDeleteBooking} disabled={isSaving}>
+                                {isSaving ? 'Processing...' : 'Delete Booking'}
                             </Button>
                         ) : <div></div>}
 

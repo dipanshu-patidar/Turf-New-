@@ -2,13 +2,17 @@ const RecurringBooking = require('../models/RecurringBooking.model');
 const Booking = require('../models/Booking.model');
 const BookingSlot = require('../models/BookingSlot.model');
 const Payment = require('../models/Payment.model');
-const { processRecurringBooking } = require('../services/recurringGenerator.service');
+const { processRecurringBooking, generateDates } = require('../services/recurringGenerator.service');
+const { checkSlotAvailability } = require('../services/slotValidation.service');
 const mongoose = require('mongoose');
+const { normalizeToMidnight } = require('../utils/dateUtils');
 
 // @desc    Create recurring booking rule
 // @route   POST /api/recurring-bookings
 // @access  Private (Admin, Staff)
 const createRecurringBooking = async (req, res) => {
+    const session = await mongoose.startSession();
+    session.startTransaction();
     try {
         const {
             customerName, customerPhone, sportType, courtId,
@@ -17,29 +21,68 @@ const createRecurringBooking = async (req, res) => {
             monthlyAmount, advancePaid, discountType, discountValue, paymentStatus
         } = req.body;
 
-        // 1. Create the rule
-        const rule = await RecurringBooking.create({
+        // 1. Pre-validation: Check for conflicts BEFORE creating the rule
+        const ruleMock = {
+            startDate: normalizeToMidnight(startDate),
+            endDate: normalizeToMidnight(endDate),
+            recurrenceType,
+            daysOfWeek,
+            fixedDate
+        };
+
+        const datesToBook = generateDates(ruleMock);
+        if (datesToBook.length === 0) {
+            throw new Error('No valid dates found in the specified range');
+        }
+
+        let conflictCount = 0;
+        for (const date of datesToBook) {
+            const availability = await checkSlotAvailability(courtId, date, startTime, endTime, session);
+            if (!availability.available) {
+                conflictCount++;
+            }
+        }
+
+        // If 100% of dates are conflicted, block the rule creation
+        if (conflictCount === datesToBook.length) {
+            return res.status(409).json({
+                success: false,
+                message: 'Double Booking: The selected time slot is already fully booked for ALL selected dates.'
+            });
+        }
+
+        // 2. Create the rule
+        const rule = await RecurringBooking.create([{
             customerName, customerPhone, sportType, courtId,
             recurrenceType, daysOfWeek, fixedDate,
-            startTime, endTime, startDate, endDate,
+            startTime, endTime,
+            startDate: normalizeToMidnight(startDate),
+            endDate: normalizeToMidnight(endDate),
             monthlyAmount,
             advancePaid, discountType, discountValue, paymentStatus,
             status: 'ACTIVE',
             createdBy: req.user._id
-        });
+        }], { session });
 
-        // 2. Trigger Generation for immediate bookings
-        const results = await processRecurringBooking(rule._id);
+        const ruleDoc = rule[0];
+
+        // 3. Trigger Generation for immediate bookings
+        const results = await processRecurringBooking(ruleDoc._id, session);
+
+        await session.commitTransaction();
 
         res.status(201).json({
             success: true,
-            data: rule,
+            data: ruleDoc,
             generationReport: results
         });
 
     } catch (error) {
+        await session.abortTransaction();
         console.error(error);
         res.status(400).json({ success: false, message: error.message });
+    } finally {
+        session.endSession();
     }
 };
 
@@ -72,7 +115,9 @@ const updateRecurringBooking = async (req, res) => {
 
     try {
         const { id } = req.params;
-        const updates = req.body;
+        const updates = { ...req.body };
+        if (updates.startDate) updates.startDate = normalizeToMidnight(updates.startDate);
+        if (updates.endDate) updates.endDate = normalizeToMidnight(updates.endDate);
 
         const rule = await RecurringBooking.findByIdAndUpdate(id, updates, { new: true, session });
         if (!rule) throw new Error('Rule not found');
@@ -110,7 +155,9 @@ const updateRecurringBooking = async (req, res) => {
         await session.commitTransaction();
 
         // 3. Trigger generation (for NEW dates that might valid now)
-        // Note: This won't delete old ones, so conflicts might happen.
+        // Pass session if we wanted it atomic, but processRecurringBooking handles its own session if null.
+        // However, it's safer to pass current session if we were still in transaction.
+        // Since we committed, we call it fresh.
         const results = await processRecurringBooking(rule._id);
 
         res.status(200).json({ success: true, data: rule, generationReport: results });
@@ -142,12 +189,60 @@ const toggleRecurringStatus = async (req, res) => {
 // @desc    Delete rule
 // @route   DELETE /api/recurring-bookings/:id
 const deleteRecurringBooking = async (req, res) => {
+    const session = await mongoose.startSession();
+    session.startTransaction();
     try {
-        await RecurringBooking.findByIdAndDelete(req.params.id);
-        // Bonus: Could delete future bookings here if we had the link
-        res.status(200).json({ success: true, message: 'Recurring rule deleted' });
+        const { id } = req.params;
+        const ruleId = new mongoose.Types.ObjectId(id);
+
+        // 1. Fetch the rule first to get metadata for fallback matching
+        const rule = await RecurringBooking.findById(id).session(session);
+        if (!rule) {
+            // If rule is already gone, at least try to delete by ID if passed valid
+            await Booking.deleteMany({ recurringRuleId: ruleId }).session(session);
+            await session.commitTransaction();
+            return res.status(200).json({ success: true, message: 'Rule not found but attempted cleanup' });
+        }
+
+        // 2. Find all bookings associated with this rule
+        // Strategy: Match by ID link OR by exact metadata (for legacy bookings)
+        const bookings = await Booking.find({
+            $or: [
+                { recurringRuleId: ruleId },
+                {
+                    bookingSource: 'RECURRING',
+                    customerPhone: rule.customerPhone,
+                    courtId: rule.courtId,
+                    startTime: rule.startTime,
+                    endTime: rule.endTime,
+                    // Only future or current bookings to avoid deleting history? 
+                    // Actually, usually when a rule is deleted, user wants the calendar clean.
+                }
+            ]
+        }).session(session);
+
+        const bookingIds = bookings.map(b => b._id);
+
+        if (bookingIds.length > 0) {
+            // 3. Delete all slots for these bookings
+            await BookingSlot.deleteMany({ bookingId: { $in: bookingIds } }).session(session);
+            // 4. Delete all payments for these bookings
+            await Payment.deleteMany({ bookingId: { $in: bookingIds } }).session(session);
+            // 5. Delete the bookings themselves
+            await Booking.deleteMany({ _id: { $in: bookingIds } }).session(session);
+        }
+
+        // 6. Delete the recurring rule itself
+        await RecurringBooking.findByIdAndDelete(id).session(session);
+
+        await session.commitTransaction();
+        res.status(200).json({ success: true, message: 'Recurring rule and all associated bookings deleted successfully' });
     } catch (error) {
+        await session.abortTransaction();
+        console.error('Delete recurring booking error:', error);
         res.status(400).json({ success: false, message: error.message });
+    } finally {
+        session.endSession();
     }
 };
 
