@@ -1,7 +1,6 @@
-import React, { useState, useEffect } from 'react';
-import { Button, Modal, Form, Badge, Spinner } from 'react-bootstrap';
-import { FaChevronLeft, FaChevronRight, FaCalendarAlt, FaTrash, FaEdit, FaRupeeSign } from 'react-icons/fa';
-import { InputGroup } from 'react-bootstrap';
+import React, { useState, useEffect, useCallback } from 'react';
+import { Button, Modal, Form, Badge, Spinner, Row, Col, InputGroup } from 'react-bootstrap';
+import { FaChevronLeft, FaChevronRight, FaCalendarAlt, FaTrash, FaEdit, FaRupeeSign, FaPhone, FaHistory, FaCheckCircle, FaTimesCircle } from 'react-icons/fa';
 import toast from 'react-hot-toast';
 import './StaffBooking.css';
 import api from '../../../api/axiosInstance';
@@ -11,7 +10,9 @@ const StaffBooking = () => {
     const [courts, setCourts] = useState([]);
     const [calendarData, setCalendarData] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [isSaving, setIsSaving] = useState(false);
 
+    // Generate time slots from 06:00 to 23:45
     const timeSlots = [];
     for (let h = 6; h < 24; h++) {
         for (let m = 0; m < 60; m += 15) {
@@ -37,17 +38,18 @@ const StaffBooking = () => {
     const fetchCourts = async () => {
         try {
             const response = await api.get('/courts');
-            setCourts(response.data);
+            setCourts(Array.isArray(response.data) ? response.data : (response.data.data || []));
         } catch (error) {
             console.error('Error fetching courts:', error);
         }
     };
 
-    const fetchCalendarData = async () => {
+    const fetchCalendarData = useCallback(async () => {
         setLoading(true);
         try {
             const dateStr = dateToString(selectedDate);
-            const response = await api.get(`/calendar/day?date=${dateStr}`);
+            // Use specialized staff calendar API
+            const response = await api.get(`/staff/calendar/day?date=${dateStr}`);
             if (response.data.success) {
                 setCalendarData(response.data.courts);
             }
@@ -57,7 +59,7 @@ const StaffBooking = () => {
         } finally {
             setLoading(false);
         }
-    };
+    }, [selectedDate]);
 
     useEffect(() => {
         fetchCourts();
@@ -65,16 +67,31 @@ const StaffBooking = () => {
 
     useEffect(() => {
         fetchCalendarData();
-    }, [selectedDate]);
+    }, [fetchCalendarData]);
 
-    // Check if slot is booked
     const getBookingForSlot = (courtId, timeSlot) => {
         const court = calendarData.find(c => c.courtId === courtId);
         if (!court) return null;
 
         return court.slots.find(b => {
-            return timeSlot >= b.startTime && timeSlot < b.endTime;
+            const [bStartH, bStartM] = b.startTime.split(':').map(Number);
+            const [bEndH, bEndM] = b.endTime.split(':').map(Number);
+            const [checkH, checkM] = timeSlot.split(':').map(Number);
+
+            const bStart = bStartH * 60 + bStartM;
+            const bEnd = bEndH * 60 + bEndM;
+            const check = checkH * 60 + checkM;
+
+            return check >= bStart && check < bEnd;
         });
+    };
+
+    const getSlotHeight = (startTime, endTime) => {
+        const [startH, startM] = startTime.split(':').map(Number);
+        const [endH, endM] = endTime.split(':').map(Number);
+        const totalMinutes = (endH * 60 + endM) - (startH * 60 + startM);
+        const slots = totalMinutes / 15;
+        return `${slots * 80 - 4}px`; // 80px is slot height, -4 for margin
     };
 
     const handleSlotClick = (courtId, courtName, time) => {
@@ -84,7 +101,6 @@ const StaffBooking = () => {
         const court = courts.find(c => c._id === courtId);
         if (!court) return;
 
-        // Default 1 hour duration
         const [h, m] = time.split(':').map(Number);
         const endM = m + 60;
         const endH = h + Math.floor(endM / 60);
@@ -119,7 +135,7 @@ const StaffBooking = () => {
         const [endH, endM] = newEndTime.split(':').map(Number);
 
         let totalMinutes = (endH * 60 + endM) - (startH * 60 + startM);
-        if (totalMinutes < 15) totalMinutes = 15; // Minimum 15 mins
+        if (totalMinutes < 15) totalMinutes = 15;
 
         const price = (selectedSlot.hourlyRate / 4) * (totalMinutes / 15);
         setSelectedSlot(prev => ({ ...prev, endTime: newEndTime, price }));
@@ -127,44 +143,80 @@ const StaffBooking = () => {
 
     const handleNewBookingSubmit = async (e) => {
         e.preventDefault();
+        setIsSaving(true);
         try {
             const payload = {
                 customerName: newBookingData.customerName,
-                customerPhone: newBookingData.phone,
-                sportType: selectedSlot.sportType,
+                phoneNumber: newBookingData.phone,
+                sport: selectedSlot.sportType,
                 courtId: selectedSlot.courtId,
                 bookingDate: dateToString(selectedDate),
                 startTime: selectedSlot.startTime,
                 endTime: selectedSlot.endTime,
                 advancePaid: Number(newBookingData.advancePaid),
-                paymentMode: 'CASH',
-                discountType: 'NONE',
-                discountValue: 0
+                paymentMode: 'CASH'
             };
 
-            await api.post('/admin/bookings', payload);
+            await api.post('/staff/bookings', payload);
             toast.success('Booking created successfully');
             setShowNewModal(false);
             fetchCalendarData();
         } catch (error) {
             toast.error(error.response?.data?.message || 'Failed to create booking');
+        } finally {
+            setIsSaving(false);
         }
     };
 
-    const handleBookingClick = (e, booking) => {
+    const handleBookingClick = (e, booking, courtName) => {
         e.stopPropagation();
-        setSelectedBooking(booking);
+        setSelectedBooking({
+            ...booking,
+            courtName
+        });
         setShowEditModal(true);
     };
 
-    const handleCancelBooking = async () => {
+    const handleEditChange = (e) => {
+        const { name, value } = e.target;
+        setSelectedBooking(prev => ({ ...prev, [name]: value }));
+    };
+
+    const handleUpdateBooking = async (e) => {
+        e.preventDefault();
+        setIsSaving(true);
         try {
-            await api.delete(`/admin/bookings/${selectedBooking.bookingId}`);
+            const payload = {
+                customerName: selectedBooking.customerName,
+                customerPhone: selectedBooking.customerPhone,
+                startTime: selectedBooking.startTime,
+                endTime: selectedBooking.endTime,
+                advancePaid: Number(selectedBooking.advancePaid)
+            };
+
+            await api.put(`/staff/calendar/bookings/${selectedBooking.bookingId}`, payload);
+            toast.success('Booking updated successfully');
+            setShowEditModal(false);
+            fetchCalendarData();
+        } catch (error) {
+            toast.error(error.response?.data?.message || 'Failed to update booking');
+        } finally {
+            setIsSaving(false);
+        }
+    };
+
+    const handleCancelBooking = async () => {
+        if (!window.confirm('Are you sure you want to cancel this booking?')) return;
+        setIsSaving(true);
+        try {
+            await api.patch(`/staff/calendar/bookings/${selectedBooking.bookingId}/cancel`);
             toast.success('Booking cancelled successfully');
             setShowEditModal(false);
             fetchCalendarData();
         } catch (error) {
-            toast.error('Failed to cancel booking');
+            toast.error(error.response?.data?.message || 'Failed to cancel booking');
+        } finally {
+            setIsSaving(false);
         }
     };
 
@@ -193,29 +245,27 @@ const StaffBooking = () => {
         });
     };
 
-    const getStatusBadgeClass = (status) => {
-        const s = (status || '').toUpperCase();
-        switch (s) {
-            case 'PAID': return 'staffbooking-badge-paid';
-            case 'PARTIAL': return 'staffbooking-badge-pending-bal';
-            case 'PENDING': return 'staffbooking-badge-pending-adv';
-            default: return '';
-        }
-    };
-
     const getStatusTheme = (status) => {
         const s = (status || '').toUpperCase();
         switch (s) {
             case 'PAID': return 'paid';
-            case 'PARTIAL': return 'pending-bal';
-            case 'PENDING': return 'pending-adv';
+            case 'BALANCE_PENDING': return 'pending-bal';
+            case 'ADVANCE_PENDING': return 'pending-adv';
             default: return '';
+        }
+    };
+
+    const getStatusLabel = (status) => {
+        switch (status) {
+            case 'PAID': return 'Fully Paid';
+            case 'BALANCE_PENDING': return 'Balance PndG';
+            case 'ADVANCE_PENDING': return 'Advance PndG';
+            default: return status;
         }
     };
 
     return (
         <div className="staffbooking-container">
-            {/* Header with Navigation */}
             <div className="staffbooking-page-header">
                 <div>
                     <h2 className="staffbooking-title">Booking Calendar</h2>
@@ -251,29 +301,27 @@ const StaffBooking = () => {
                 </div>
             </div>
 
-            {/* Calendar Grid */}
             <div className="staffbooking-calendar-wrapper">
                 {loading && (
                     <div className="staffbooking-loading-overlay">
                         <Spinner animation="border" variant="primary" />
                     </div>
                 )}
-                <div className="staffbooking-calendar-grid" style={{ gridTemplateColumns: `80px repeat(${calendarData.length}, 1fr)` }}>
-                    {/* Header Row */}
+                <div className="staffbooking-calendar-grid" style={{ gridTemplateColumns: `80px repeat(${calendarData.length || 1}, 1fr)` }}>
                     <div className="staffbooking-header-cell time-head">Time</div>
                     {calendarData.map(court => (
                         <div key={court.courtId} className="staffbooking-header-cell">
                             {court.courtName}
-                            <div className="small text-muted fw-normal">{court.sportType}</div>
                         </div>
                     ))}
+                    {calendarData.length === 0 && !loading && (
+                        <div className="staffbooking-header-cell text-muted">No Active Courts</div>
+                    )}
 
-                    {/* Time Rows */}
                     {timeSlots.map(time => (
                         <div key={time} className="staffbooking-time-row">
                             <div className="staffbooking-time-cell">{time}</div>
                             {calendarData.map(court => {
-                                // Check for booking in this slot
                                 const booking = getBookingForSlot(court.courtId, time);
                                 const isStart = booking && booking.startTime === time;
 
@@ -286,18 +334,23 @@ const StaffBooking = () => {
                                         {isStart && (
                                             <div
                                                 className={`staffbooking-booked-card ${getStatusTheme(booking.paymentStatus)}`}
-                                                onClick={(e) => handleBookingClick(e, booking)}
+                                                onClick={(e) => handleBookingClick(e, booking, court.courtName)}
+                                                style={{ height: getSlotHeight(booking.startTime, booking.endTime) }}
                                             >
-                                                <div>
+                                                <div className="staffbooking-slot-content">
                                                     <div className="staffbooking-slot-time">
                                                         {booking.startTime} - {booking.endTime}
                                                     </div>
                                                     <div className="staffbooking-customer-name">
                                                         {booking.customerName}
+                                                        {booking.bookingSource === 'RECURRING' && <FaHistory className="ms-1 small" title="Recurring" />}
+                                                    </div>
+                                                    <div className="small text-muted" style={{ fontSize: '0.7rem' }}>
+                                                        <FaPhone size={10} className="me-1" /> {booking.customerPhone}
                                                     </div>
                                                 </div>
-                                                <div className={`staffbooking-status-badge ${getStatusBadgeClass(booking.paymentStatus)}`}>
-                                                    {booking.paymentStatus}
+                                                <div className="staffbooking-status-badge">
+                                                    {getStatusLabel(booking.paymentStatus)}
                                                 </div>
                                             </div>
                                         )}
@@ -308,7 +361,7 @@ const StaffBooking = () => {
                     ))}
                 </div>
             </div>
-            {/* New Booking Modal - Matches Admin Style */}
+
             <Modal show={showNewModal} onHide={() => setShowNewModal(false)} centered backdrop="static">
                 <Modal.Header closeButton className="border-0">
                     <Modal.Title className="fw-bold">Add New Booking</Modal.Title>
@@ -318,30 +371,15 @@ const StaffBooking = () => {
                         <div className="row g-3 mb-3">
                             <div className="col-md-12">
                                 <Form.Label className="small fw-bold">Court</Form.Label>
-                                <Form.Control
-                                    type="text"
-                                    value={selectedSlot.court}
-                                    readOnly
-                                    className="bg-light"
-                                />
+                                <Form.Control type="text" value={selectedSlot.court} readOnly className="bg-light" />
                             </div>
                             <div className="col-md-6">
                                 <Form.Label className="small fw-bold">Start Time</Form.Label>
-                                <Form.Control
-                                    type="time"
-                                    value={selectedSlot.startTime}
-                                    readOnly
-                                    className="bg-light"
-                                />
+                                <Form.Control type="time" value={selectedSlot.startTime} readOnly className="bg-light" />
                             </div>
                             <div className="col-md-6">
                                 <Form.Label className="small fw-bold">End Time</Form.Label>
-                                <Form.Control
-                                    type="time"
-                                    step="900"
-                                    value={selectedSlot.endTime}
-                                    onChange={(e) => handleEndTimeChange(e.target.value)}
-                                />
+                                <Form.Control type="time" step="900" value={selectedSlot.endTime} onChange={(e) => handleEndTimeChange(e.target.value)} />
                             </div>
                         </div>
 
@@ -399,59 +437,137 @@ const StaffBooking = () => {
                     </Modal.Body>
                     <Modal.Footer className="border-0 bg-light">
                         <Button variant="light" onClick={() => setShowNewModal(false)}>Cancel</Button>
-                        <Button variant="primary" type="submit" className="px-4">Create Booking</Button>
+                        <Button variant="primary" type="submit" disabled={isSaving}>
+                            {isSaving ? <Spinner animation="border" size="sm" /> : 'Create Booking'}
+                        </Button>
                     </Modal.Footer>
                 </Form>
             </Modal>
 
-            {/* Edit/View Booking Modal */}
-            <Modal show={showEditModal} onHide={() => setShowEditModal(false)} centered>
-                <Modal.Header closeButton className="border-0">
-                    <Modal.Title className="fw-bold">Booking Details</Modal.Title>
+            <Modal show={showEditModal} onHide={() => setShowEditModal(false)} centered size="md">
+                <Modal.Header closeButton className="border-0 bg-light">
+                    <Modal.Title className="fw-bold">
+                        {selectedBooking?.isEditable ? 'Edit Booking' : 'Booking Details'}
+                        {selectedBooking?.bookingSource === 'RECURRING' && <Badge bg="info" className="ms-2 small">Recurring</Badge>}
+                    </Modal.Title>
                 </Modal.Header>
-                <Modal.Body className="pt-0">
-                    {selectedBooking && (
-                        <>
-                            <div className="mb-4">
-                                <Badge bg="light" text="dark" className="border px-3 py-3 w-100 text-start">
-                                    <div className="row">
-                                        <div className="col-6">
+                <Form onSubmit={handleUpdateBooking}>
+                    <Modal.Body className="p-4">
+                        {selectedBooking && (
+                            <Row className="g-3">
+                                <Col xs={12}>
+                                    <div className="d-flex justify-content-between align-items-center bg-light p-3 rounded border mb-2">
+                                        <div>
                                             <div className="small text-muted">Court</div>
-                                            <div className="fw-bold">{selectedBooking.court}</div>
+                                            <div className="fw-bold">{selectedBooking.courtName}</div>
                                         </div>
-                                        <div className="col-6 text-end">
+                                        <div className="text-end">
                                             <div className="small text-muted">Time Slot</div>
                                             <div className="fw-bold">{selectedBooking.startTime} - {selectedBooking.endTime}</div>
                                         </div>
                                     </div>
-                                </Badge>
-                            </div>
-                            <div className="mb-3">
-                                <label className="small text-muted d-block">Customer</label>
-                                <h5 className="fw-bold mb-0">{selectedBooking.customerName}</h5>
-                            </div>
-                            <div className="mb-3">
-                                <label className="small text-muted d-block">Customer Number</label>
-                                <div className="fw-bold">{selectedBooking.phone || 'N/A'}</div>
-                            </div>
-                            <div className="mb-3">
-                                <label className="small text-muted d-block">Payment Status</label>
-                                <div className={`staffbooking-status-badge mt-1 ${getStatusBadgeClass(selectedBooking.status)}`}>
-                                    {selectedBooking.status}
-                                </div>
-                            </div>
-                        </>
-                    )}
-                </Modal.Body>
-                <Modal.Footer className="border-0 d-flex justify-content-between">
-                    <Button variant="outline-danger" onClick={handleCancelBooking}>
-                        <FaTrash className="me-2" /> Cancel Booking
-                    </Button>
-                    <div>
-                        <Button variant="light" className="me-2" onClick={() => setShowEditModal(false)}>Close</Button>
-                        <Button variant="primary" onClick={() => toast.error('Edit feature coming soon')}><FaEdit className="me-2" /> Edit</Button>
-                    </div>
-                </Modal.Footer>
+                                </Col>
+
+                                <Col md={12}>
+                                    <Form.Label className="small fw-bold">Customer Name</Form.Label>
+                                    <Form.Control
+                                        type="text"
+                                        name="customerName"
+                                        value={selectedBooking.customerName}
+                                        onChange={handleEditChange}
+                                        readOnly={!selectedBooking.isEditable}
+                                        required
+                                    />
+                                </Col>
+                                <Col md={12}>
+                                    <Form.Label className="small fw-bold">Phone Number</Form.Label>
+                                    <Form.Control
+                                        type="text"
+                                        name="customerPhone"
+                                        value={selectedBooking.customerPhone}
+                                        onChange={handleEditChange}
+                                        readOnly={!selectedBooking.isEditable}
+                                        required
+                                    />
+                                </Col>
+
+                                {selectedBooking.isEditable && (
+                                    <>
+                                        <Col md={6}>
+                                            <Form.Label className="small fw-bold">Start Time</Form.Label>
+                                            <Form.Control
+                                                type="time"
+                                                name="startTime"
+                                                value={selectedBooking.startTime}
+                                                onChange={handleEditChange}
+                                            />
+                                        </Col>
+                                        <Col md={6}>
+                                            <Form.Label className="small fw-bold">End Time</Form.Label>
+                                            <Form.Control
+                                                type="time"
+                                                name="endTime"
+                                                value={selectedBooking.endTime}
+                                                onChange={handleEditChange}
+                                            />
+                                        </Col>
+                                    </>
+                                )}
+
+                                <Col xs={12}>
+                                    <div className="mt-3 border-top pt-3">
+                                        <h6 className="fw-bold text-muted mb-3"><FaRupeeSign className="me-1" /> Payment Breakdown</h6>
+                                        <Row className="small mb-2">
+                                            <Col xs={6} className="text-muted">Total Amount:</Col>
+                                            <Col xs={6} className="text-end fw-bold text-dark">₹{selectedBooking.finalAmount}</Col>
+                                        </Row>
+                                        <Row className="small mb-2 align-items-center">
+                                            <Col xs={6} className="text-success fw-bold">Advance Paid:</Col>
+                                            <Col xs={6} className="text-end">
+                                                {selectedBooking.isEditable ? (
+                                                    <Form.Control
+                                                        size="sm"
+                                                        type="number"
+                                                        name="advancePaid"
+                                                        value={selectedBooking.advancePaid}
+                                                        onChange={handleEditChange}
+                                                        className="d-inline-block text-end w-75"
+                                                    />
+                                                ) : <span className="fw-bold text-success">₹{selectedBooking.advancePaid}</span>}
+                                            </Col>
+                                        </Row>
+                                        <Row className="small mb-2 border-top pt-2">
+                                            <Col xs={6} className="text-danger fw-bold">Due Balance:</Col>
+                                            <Col xs={6} className="text-end fw-bold text-danger h5 mb-0">₹{selectedBooking.finalAmount - (selectedBooking.advancePaid || 0)}</Col>
+                                        </Row>
+                                    </div>
+                                </Col>
+
+                                <Col xs={12} className="text-center mt-3">
+                                    <div className={`staffbooking-status-badge w-100 py-2 border ${getStatusTheme(selectedBooking.paymentStatus)}`}>
+                                        Status: {getStatusLabel(selectedBooking.paymentStatus)}
+                                    </div>
+                                </Col>
+                            </Row>
+                        )}
+                    </Modal.Body>
+                    <Modal.Footer className="border-0 bg-light d-flex justify-content-between">
+                        {selectedBooking?.isDeletable ? (
+                            <Button variant="outline-danger" onClick={handleCancelBooking} disabled={isSaving}>
+                                <FaTrash className="me-2" /> Cancel Booking
+                            </Button>
+                        ) : <div></div>}
+
+                        <div>
+                            <Button variant="light" className="me-2" onClick={() => setShowEditModal(false)}>Close</Button>
+                            {selectedBooking?.isEditable && (
+                                <Button variant="primary" type="submit" disabled={isSaving}>
+                                    {isSaving ? <Spinner animation="border" size="sm" /> : <><FaEdit className="me-2" /> Save Changes</>}
+                                </Button>
+                            )}
+                        </div>
+                    </Modal.Footer>
+                </Form>
             </Modal>
         </div>
     );

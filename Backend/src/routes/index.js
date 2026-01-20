@@ -12,6 +12,7 @@ const reportsRoutes = require('./reports.routes');
 const settingsRoutes = require('./settings.routes');
 const profileRoutes = require('./profile.routes');
 const bookingListRoutes = require('./bookingList.routes');
+const staffCalendarRoutes = require('./staffCalendar.routes');
 
 router.get('/health', (req, res) => {
     res.json({ status: 'ok', message: 'Server is running' });
@@ -32,6 +33,7 @@ router.use('/admin/profile', profileRoutes);
 
 // Staff/Management Routes
 router.use('/staff/bookings', bookingListRoutes);
+router.use('/staff/calendar', staffCalendarRoutes);
 router.use('/staff/profile', profileRoutes);
 router.use('/management/profile', profileRoutes);
 
