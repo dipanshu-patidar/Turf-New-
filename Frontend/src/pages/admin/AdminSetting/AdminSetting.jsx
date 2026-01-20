@@ -1,32 +1,42 @@
-import React, { useState } from 'react';
-import { Form, Button } from 'react-bootstrap';
+import React, { useState, useEffect, useCallback } from 'react';
+import { Form, Button, Spinner } from 'react-bootstrap';
 import toast from 'react-hot-toast';
+import settingService from '../../../api/settingService';
 import './AdminSetting.css';
 
 const AdminSetting = () => {
-    // Initial settings state
+    const [loading, setLoading] = useState(false);
+    const [saving, setSaving] = useState(false);
     const [settings, setSettings] = useState({
-        turfName: 'Elite Sports Arena',
-        openingTime: '06:00',
-        closingTime: '23:00',
-        slotDuration: '60',
-        weekendDays: {
-            saturday: true,
-            sunday: true
-        },
+        turfName: '',
+        openingTime: '',
+        closingTime: '',
+        slotDuration: 15,
+        weekendDays: [],
         currency: 'INR'
     });
 
     const [errors, setErrors] = useState({});
     const [originalSettings, setOriginalSettings] = useState({ ...settings });
 
-    // Slot duration options
-    const slotDurations = [
-        { value: '30', label: '30 Minutes' },
-        { value: '60', label: '60 Minutes' },
-        { value: '90', label: '90 Minutes' },
-        { value: '120', label: '120 Minutes' }
-    ];
+    // Fetch settings on mount
+    const fetchSettings = useCallback(async () => {
+        setLoading(true);
+        try {
+            const data = await settingService.getSettings();
+            setSettings(data);
+            setOriginalSettings(data);
+        } catch (error) {
+            console.error('Error fetching settings:', error);
+            toast.error('Failed to load settings');
+        } finally {
+            setLoading(false);
+        }
+    }, []);
+
+    useEffect(() => {
+        fetchSettings();
+    }, [fetchSettings]);
 
     // Currency options
     const currencies = [
@@ -39,7 +49,6 @@ const AdminSetting = () => {
     // Handle input changes
     const handleInputChange = (field, value) => {
         setSettings({ ...settings, [field]: value });
-        // Clear error for this field
         if (errors[field]) {
             setErrors({ ...errors, [field]: '' });
         }
@@ -47,14 +56,20 @@ const AdminSetting = () => {
 
     // Handle weekend day toggle
     const handleWeekendToggle = (day) => {
+        const currentWeekends = [...settings.weekendDays];
+        const index = currentWeekends.indexOf(day);
+
+        if (index > -1) {
+            currentWeekends.splice(index, 1);
+        } else {
+            currentWeekends.push(day);
+        }
+
         setSettings({
             ...settings,
-            weekendDays: {
-                ...settings.weekendDays,
-                [day]: !settings.weekendDays[day]
-            }
+            weekendDays: currentWeekends
         });
-        // Clear weekend error
+
         if (errors.weekendDays) {
             setErrors({ ...errors, weekendDays: '' });
         }
@@ -64,12 +79,10 @@ const AdminSetting = () => {
     const validateForm = () => {
         const newErrors = {};
 
-        // Turf name validation
         if (!settings.turfName.trim()) {
             newErrors.turfName = 'Turf name is required';
         }
 
-        // Operating hours validation
         if (!settings.openingTime) {
             newErrors.openingTime = 'Opening time is required';
         }
@@ -80,17 +93,10 @@ const AdminSetting = () => {
             newErrors.closingTime = 'Closing time must be after opening time';
         }
 
-        // Slot duration validation
-        if (!settings.slotDuration) {
-            newErrors.slotDuration = 'Slot duration is required';
-        }
-
-        // Weekend days validation
-        if (!settings.weekendDays.saturday && !settings.weekendDays.sunday) {
+        if (settings.weekendDays.length === 0) {
             newErrors.weekendDays = 'At least one weekend day must be selected';
         }
 
-        // Currency validation
         if (!settings.currency) {
             newErrors.currency = 'Currency is required';
         }
@@ -100,13 +106,28 @@ const AdminSetting = () => {
     };
 
     // Handle save
-    const handleSave = (e) => {
+    const handleSave = async (e) => {
         e.preventDefault();
 
         if (validateForm()) {
-            // Save settings logic here (API call)
-            setOriginalSettings({ ...settings });
-            toast.success('Settings saved successfully!');
+            setSaving(true);
+            try {
+                const data = await settingService.updateSettings({
+                    turfName: settings.turfName,
+                    openingTime: settings.openingTime,
+                    closingTime: settings.closingTime,
+                    weekendDays: settings.weekendDays,
+                    currency: settings.currency
+                });
+                setSettings(data);
+                setOriginalSettings(data);
+                toast.success('Settings saved successfully!');
+            } catch (error) {
+                console.error('Error saving settings:', error);
+                toast.error(error.response?.data?.message || 'Failed to save settings');
+            } finally {
+                setSaving(false);
+            }
         } else {
             toast.error('Please fix the errors before saving');
         }
@@ -118,6 +139,17 @@ const AdminSetting = () => {
         setErrors({});
         toast.info('Settings reset to last saved values');
     };
+
+    if (loading) {
+        return (
+            <div className="adminsetting-container rounded-4 shadow-sm d-flex justify-content-center align-items-center" style={{ minHeight: '400px' }}>
+                <div className="text-center">
+                    <Spinner animation="border" variant="danger" />
+                    <p className="mt-2 text-muted">Loading settings...</p>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="adminsetting-container rounded-4 shadow-sm">
@@ -202,26 +234,16 @@ const AdminSetting = () => {
                         <h5 className="adminsetting-section-title">Booking Configuration</h5>
                         <Form.Group className="mb-3">
                             <Form.Label className="adminsetting-form-label">
-                                Slot Duration <span className="required">*</span>
+                                Slot Duration
                             </Form.Label>
-                            <Form.Select
-                                className="adminsetting-form-control"
-                                value={settings.slotDuration}
-                                onChange={(e) => handleInputChange('slotDuration', e.target.value)}
-                                isInvalid={!!errors.slotDuration}
-                            >
-                                <option value="">Select slot duration</option>
-                                {slotDurations.map(slot => (
-                                    <option key={slot.value} value={slot.value}>
-                                        {slot.label}
-                                    </option>
-                                ))}
-                            </Form.Select>
-                            {errors.slotDuration && (
-                                <div className="adminsetting-error">{errors.slotDuration}</div>
-                            )}
+                            <Form.Control
+                                type="text"
+                                className="adminsetting-form-control adminsetting-readonly"
+                                value={`${settings.slotDuration} Minutes`}
+                                readOnly
+                            />
                             <div className="adminsetting-help-text">
-                                Duration of each booking slot
+                                Duration of each booking slot (System Controlled)
                             </div>
                         </Form.Group>
 
@@ -249,30 +271,23 @@ const AdminSetting = () => {
                                 Weekend Days <span className="required">*</span>
                             </Form.Label>
                             <div className="adminsetting-checkbox-group">
-                                <div className="adminsetting-checkbox-item">
-                                    <input
-                                        type="checkbox"
-                                        id="saturday"
-                                        checked={settings.weekendDays.saturday}
-                                        onChange={() => handleWeekendToggle('saturday')}
-                                    />
-                                    <label htmlFor="saturday">Saturday</label>
-                                </div>
-                                <div className="adminsetting-checkbox-item">
-                                    <input
-                                        type="checkbox"
-                                        id="sunday"
-                                        checked={settings.weekendDays.sunday}
-                                        onChange={() => handleWeekendToggle('sunday')}
-                                    />
-                                    <label htmlFor="sunday">Sunday</label>
-                                </div>
+                                {['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN'].map(day => (
+                                    <div key={day} className="adminsetting-checkbox-item">
+                                        <input
+                                            type="checkbox"
+                                            id={day}
+                                            checked={settings.weekendDays.includes(day)}
+                                            onChange={() => handleWeekendToggle(day)}
+                                        />
+                                        <label htmlFor={day}>{day}</label>
+                                    </div>
+                                ))}
                             </div>
                             {errors.weekendDays && (
                                 <div className="adminsetting-error">{errors.weekendDays}</div>
                             )}
                             <div className="adminsetting-help-text">
-                                Select days that are considered weekends for pricing
+                                Select days that are considered weekends for pricing and display
                             </div>
                         </Form.Group>
                     </div>
@@ -311,14 +326,21 @@ const AdminSetting = () => {
                             type="button"
                             className="adminsetting-btn-secondary"
                             onClick={handleReset}
+                            disabled={saving}
                         >
                             Reset
                         </Button>
                         <Button
                             type="submit"
                             className="adminsetting-btn-primary"
+                            disabled={saving}
                         >
-                            Save Settings
+                            {saving ? (
+                                <>
+                                    <Spinner animation="border" size="sm" className="me-2" />
+                                    Saving...
+                                </>
+                            ) : 'Save Settings'}
                         </Button>
                     </div>
                 </Form>

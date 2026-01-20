@@ -9,7 +9,7 @@ import AdminBooking from './pages/admin/AdminBooking/AdminBooking';
 import AdminRecurring from './pages/admin/AdminRecurring/AdminRecurring';
 import AdminPayment from './pages/admin/AdminPayment/AdminPayment';
 import AdminReports from './pages/admin/AdminReports/AdminReports';
-import AdminSetting from './pages/admin/AdminSetting/AdminSetting';
+// import AdminSetting from './pages/admin/AdminSetting/AdminSetting';
 import AdminProfile from './pages/admin/AdminProfile/AdminProfile';
 import AdminNewBooking from './pages/admin/AdminNewBooking/AdminNewBooking';
 import AdminBookingList from './pages/admin/AdminBookingList/AdminBookingList';
@@ -109,7 +109,7 @@ function App() {
           <Route path="recurring-bookings" element={<AdminRecurring />} />
           <Route path="payments" element={<AdminPayment />} />
           <Route path="reports" element={<AdminReports />} />
-          <Route path="settings" element={<AdminSetting />} />
+          {/* <Route path="settings" element={<AdminSetting />} /> */}
           <Route path="profile" element={<AdminProfile />} />
         </Route>
 

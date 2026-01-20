@@ -28,7 +28,7 @@ const Sidebar = ({ role, isOpen, toggleSidebar }) => {
             { label: 'Recurring Bookings', path: '/admin/recurring-bookings', icon: <FaClock /> },
             { label: 'Payments', path: '/admin/payments', icon: <FaMoneyBillWave /> },
             { label: 'Reports', path: '/admin/reports', icon: <FaChartBar /> },
-            { label: 'Settings', path: '/admin/settings', icon: <FaCog /> },
+            // { label: 'Settings', path: '/admin/settings', icon: <FaCog /> },
         ],
         management: [
             { label: 'Dashboard', path: '/management/dashboard', icon: <FaTachometerAlt /> },

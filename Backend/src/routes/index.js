@@ -9,6 +9,7 @@ const recurringBookingRoutes = require('./recurringBooking.routes');
 const dashboardRoutes = require('./dashboard.routes');
 const paymentRoutes = require('./payment.routes');
 const reportsRoutes = require('./reports.routes');
+const settingsRoutes = require('./settings.routes');
 
 router.get('/health', (req, res) => {
     res.json({ status: 'ok', message: 'Server is running' });
@@ -23,5 +24,6 @@ router.use('/recurring-bookings', recurringBookingRoutes);
 router.use('/admin/dashboard', dashboardRoutes);
 router.use('/admin/payments', paymentRoutes);
 router.use('/admin/reports', reportsRoutes);
+router.use('/admin/settings', settingsRoutes);
 
 module.exports = router;
