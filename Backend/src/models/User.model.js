@@ -21,8 +21,12 @@ const userSchema = new mongoose.Schema({
     password: {
         type: String,
         required: [true, 'Please add a password'],
-        minlength: 6,
-        select: false, // Do not return password by default
+        minlength: 8,
+        select: false,
+    },
+    avatar: {
+        type: String,
+        default: '',
     },
     role: {
         type: String,

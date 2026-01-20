@@ -1,16 +1,24 @@
-import React, { useState, useRef } from 'react';
-import { Form, Button, Row, Col } from 'react-bootstrap';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
+import { Form, Button, Row, Col, Spinner } from 'react-bootstrap';
 import { FaUpload } from 'react-icons/fa';
 import toast from 'react-hot-toast';
+import profileService from '../../../api/profileService';
 import './AdminProfile.css';
 
 const AdminProfile = () => {
+    const [loading, setLoading] = useState(true);
+    const [updatingInfo, setUpdatingInfo] = useState(false);
+    const [changingPassword, setChangingPassword] = useState(false);
+
     // Personal Info State
     const [personalInfo, setPersonalInfo] = useState({
-        name: 'WorkDo',
-        email: 'company@example.com',
-        avatar: 'https://img.freepik.com/free-photo/handsome-young-man-with-new-haircut-style_23-2147847101.jpg' // Using a placeholder similar to the image
+        name: '',
+        email: '',
+        avatar: ''
     });
+
+    const [selectedFile, setSelectedFile] = useState(null);
+    const [avatarPreview, setAvatarPreview] = useState('');
 
     // Password State
     const [passwordData, setPasswordData] = useState({
@@ -20,6 +28,28 @@ const AdminProfile = () => {
     });
 
     const fileInputRef = useRef(null);
+
+    // Fetch Profile
+    const fetchProfile = useCallback(async () => {
+        try {
+            const data = await profileService.getProfile();
+            setPersonalInfo({
+                name: data.name,
+                email: data.email,
+                avatar: data.avatar
+            });
+            setAvatarPreview(data.avatar);
+        } catch (error) {
+            console.error('Error fetching profile:', error);
+            toast.error('Failed to load profile');
+        } finally {
+            setLoading(false);
+        }
+    }, []);
+
+    useEffect(() => {
+        fetchProfile();
+    }, [fetchProfile]);
 
     // Handle Personal Info Changes
     const handlePersonalInfoChange = (e) => {
@@ -45,26 +75,54 @@ const AdminProfile = () => {
                 toast.error('Image size should not be more than 2MB');
                 return;
             }
+            setSelectedFile(file);
             const reader = new FileReader();
             reader.onloadend = () => {
-                setPersonalInfo(prev => ({ ...prev, avatar: reader.result }));
-                toast.success('Avatar uploaded successfully!');
+                setAvatarPreview(reader.result);
             };
             reader.readAsDataURL(file);
         }
     };
 
     // Submit Handlers
-    const handlePersonalInfoSubmit = (e) => {
+    const handlePersonalInfoSubmit = async (e) => {
         e.preventDefault();
         if (!personalInfo.name || !personalInfo.email) {
             toast.error('Name and Email are required');
             return;
         }
-        toast.success('Personal info updated successfully!');
+
+        setUpdatingInfo(true);
+        try {
+            const formData = new FormData();
+            formData.append('name', personalInfo.name);
+            formData.append('email', personalInfo.email);
+            if (selectedFile) {
+                formData.append('avatar', selectedFile);
+            }
+
+            const updatedUser = await profileService.updateProfile(formData);
+            setPersonalInfo({
+                name: updatedUser.name,
+                email: updatedUser.email,
+                avatar: updatedUser.avatar
+            });
+            setAvatarPreview(updatedUser.avatar);
+            setSelectedFile(null);
+
+            // Notify other components (like Navbar) about the update
+            window.dispatchEvent(new CustomEvent('profileUpdate', { detail: updatedUser }));
+
+            toast.success('Personal info updated successfully!');
+        } catch (error) {
+            console.error('Error updating profile:', error);
+            toast.error(error.response?.data?.message || 'Failed to update profile');
+        } finally {
+            setUpdatingInfo(false);
+        }
     };
 
-    const handlePasswordSubmit = (e) => {
+    const handlePasswordSubmit = async (e) => {
         e.preventDefault();
         const { oldPassword, newPassword, confirmPassword } = passwordData;
 
@@ -78,13 +136,38 @@ const AdminProfile = () => {
             return;
         }
 
-        toast.success('Password changed successfully!');
-        setPasswordData({
-            oldPassword: '',
-            newPassword: '',
-            confirmPassword: ''
-        });
+        if (newPassword.length < 8) {
+            toast.error('New password must be at least 8 characters');
+            return;
+        }
+
+        setChangingPassword(true);
+        try {
+            await profileService.changePassword(passwordData);
+            toast.success('Password changed successfully!');
+            setPasswordData({
+                oldPassword: '',
+                newPassword: '',
+                confirmPassword: ''
+            });
+        } catch (error) {
+            console.error('Error changing password:', error);
+            toast.error(error.response?.data?.message || 'Failed to change password');
+        } finally {
+            setChangingPassword(false);
+        }
     };
+
+    if (loading) {
+        return (
+            <div className="adminprofile-container d-flex justify-content-center align-items-center" style={{ minHeight: '400px' }}>
+                <div className="text-center">
+                    <Spinner animation="border" variant="danger" />
+                    <p className="mt-2 text-muted">Loading profile...</p>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="adminprofile-container">
@@ -143,14 +226,16 @@ const AdminProfile = () => {
                                     type="button"
                                     className="adminprofile-upload-btn"
                                     onClick={handleAvatarClick}
+                                    disabled={updatingInfo}
                                 >
                                     <FaUpload /> Choose file here
                                 </button>
                             </div>
                             <img
-                                src={personalInfo.avatar}
+                                src={avatarPreview || 'https://via.placeholder.com/150'}
                                 alt="Avatar Preview"
                                 className="adminprofile-avatar-preview"
+                                onError={(e) => { e.target.src = 'https://via.placeholder.com/150'; }}
                             />
                             <div className="adminprofile-avatar-hint">
                                 Please upload a valid image file. Size of image should not be more than 2MB.
@@ -158,8 +243,17 @@ const AdminProfile = () => {
                         </div>
                     </div>
                     <div className="adminprofile-card-footer">
-                        <Button type="submit" className="adminprofile-btn-primary">
-                            Save Changes
+                        <Button
+                            type="submit"
+                            className="adminprofile-btn-primary"
+                            disabled={updatingInfo}
+                        >
+                            {updatingInfo ? (
+                                <>
+                                    <Spinner animation="border" size="sm" className="me-2" />
+                                    Updating...
+                                </>
+                            ) : 'Save Changes'}
                         </Button>
                     </div>
                 </Form>
@@ -222,8 +316,17 @@ const AdminProfile = () => {
                         </Row>
                     </div>
                     <div className="adminprofile-card-footer">
-                        <Button type="submit" className="adminprofile-btn-primary">
-                            Change Password
+                        <Button
+                            type="submit"
+                            className="adminprofile-btn-primary"
+                            disabled={changingPassword}
+                        >
+                            {changingPassword ? (
+                                <>
+                                    <Spinner animation="border" size="sm" className="me-2" />
+                                    Changing...
+                                </>
+                            ) : 'Change Password'}
                         </Button>
                     </div>
                 </Form>
