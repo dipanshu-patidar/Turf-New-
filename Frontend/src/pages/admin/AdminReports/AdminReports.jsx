@@ -1,75 +1,75 @@
-import React, { useState } from 'react';
-import { Table, Badge, Nav, Form } from 'react-bootstrap';
+import React, { useState, useEffect, useCallback } from 'react';
+import { Table, Badge, Nav, Form, Spinner } from 'react-bootstrap';
 import { FaCalendarAlt, FaMoneyBillWave, FaExclamationTriangle, FaChartLine } from 'react-icons/fa';
 import { BarChart, Bar, LineChart, Line, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import reportService from '../../../api/reportService';
+import toast from 'react-hot-toast';
 import './AdminReports.css';
 
 const AdminReports = () => {
     const [activeTab, setActiveTab] = useState('daily');
+    const [loading, setLoading] = useState(false);
+    const [courtList, setCourtList] = useState([]);
     const [filters, setFilters] = useState({
         dateFrom: new Date().toISOString().split('T')[0],
         dateTo: new Date().toISOString().split('T')[0],
         court: 'All Courts'
     });
 
-    const courts = ['All Courts', 'Football', 'Cricket', 'Badminton - Court 1', 'Badminton - Court 2', 'Pickleball'];
+    // Report Data States
+    const [dailyData, setDailyData] = useState({ totalBookings: 0, totalRevenue: 0, pendingBalance: 0, bookings: [] });
+    const [monthlyData, setMonthlyData] = useState({ summary: { totalBookings: 0, totalCollection: 0, pendingBalance: 0 }, dailyTrend: [] });
+    const [revenueData, setRevenueData] = useState({ totalRevenue: 0, revenueTrend: [], weekdayVsWeekend: { weekday: 0, weekend: 0 }, courtWise: [] });
+    const [pendingData, setPendingData] = useState({ totalPending: 0, pendingBookings: [] });
 
-    // Mock data for daily report
-    const dailyStats = {
-        totalBookings: 12,
-        totalRevenue: 15600,
-        pendingBalance: 2400
+    const fetchCourts = async () => {
+        try {
+            const data = await reportService.getCourts();
+            setCourtList(data);
+        } catch (error) {
+            console.error('Error fetching courts:', error);
+            toast.error('Failed to load courts');
+        }
     };
 
-    const dailyBookings = [
-        { id: 1, customer: 'Rahul Sharma', court: 'Football', time: '18:00', amount: 1500, status: 'Paid' },
-        { id: 2, customer: 'Priya Singh', court: 'Cricket', time: '17:00', amount: 1300, status: 'Pending' },
-        { id: 3, customer: 'Amit Verma', court: 'Badminton - Court 1', time: '09:00', amount: 600, status: 'Paid' }
-    ];
+    const fetchReport = useCallback(async () => {
+        setLoading(true);
+        try {
+            if (activeTab === 'daily') {
+                const data = await reportService.getDailyReport({
+                    date: filters.dateFrom,
+                    courtId: filters.court === 'All Courts' ? undefined : filters.court
+                });
+                setDailyData(data);
+            } else if (activeTab === 'monthly') {
+                const month = filters.dateFrom.substring(0, 7); // YYYY-MM
+                const data = await reportService.getMonthlyReport({ month });
+                setMonthlyData(data);
+            } else if (activeTab === 'revenue') {
+                const data = await reportService.getRevenueReport({
+                    from: filters.dateFrom,
+                    to: filters.dateTo
+                });
+                setRevenueData(data);
+            } else if (activeTab === 'pending') {
+                const data = await reportService.getPendingReport();
+                setPendingData(data);
+            }
+        } catch (error) {
+            console.error(`Error fetching ${activeTab} report:`, error);
+            toast.error(`Failed to load ${activeTab} report`);
+        } finally {
+            setLoading(false);
+        }
+    }, [activeTab, filters.dateFrom, filters.dateTo, filters.court]);
 
-    // Mock data for monthly report
-    const monthlyStats = {
-        totalBookings: 245,
-        totalCollection: 312000,
-        pendingBalance: 18500
-    };
+    useEffect(() => {
+        fetchCourts();
+    }, []);
 
-    const monthlyTrendData = [
-        { date: 'Week 1', bookings: 58, revenue: 72000 },
-        { date: 'Week 2', bookings: 62, revenue: 78500 },
-        { date: 'Week 3', bookings: 55, revenue: 69000 },
-        { date: 'Week 4', bookings: 70, revenue: 92500 }
-    ];
-
-    // Mock data for revenue report
-    const revenueStats = {
-        totalRevenue: 312000,
-        weekdayRevenue: 185000,
-        weekendRevenue: 127000
-    };
-
-    const courtRevenueData = [
-        { court: 'Football', revenue: 125000 },
-        { court: 'Cricket', revenue: 98000 },
-        { court: 'Badminton 1', revenue: 45000 },
-        { court: 'Badminton 2', revenue: 28000 },
-        { court: 'Pickleball', revenue: 16000 }
-    ];
-
-    const weekdayWeekendData = [
-        { name: 'Weekday', value: 185000 },
-        { name: 'Weekend', value: 127000 }
-    ];
-
-    // Mock data for pending balance report
-    const pendingBalances = [
-        { id: 1, customer: 'Priya Singh', court: 'Cricket', bookingDate: '2026-01-16', balance: 800 },
-        { id: 2, customer: 'Amit Verma', court: 'Badminton - Court 1', bookingDate: '2026-01-17', balance: 300 },
-        { id: 3, customer: 'Sneha Patel', court: 'Football', bookingDate: '2026-01-15', balance: 500 },
-        { id: 4, customer: 'Ravi Kumar', court: 'Pickleball', bookingDate: '2026-01-14', balance: 800 }
-    ];
-
-    const totalPending = pendingBalances.reduce((sum, item) => sum + item.balance, 0);
+    useEffect(() => {
+        fetchReport();
+    }, [fetchReport]);
 
     const COLORS = ['#E63946', '#457B9D', '#1D3557', '#A8DADC', '#F1FAEE'];
 
@@ -82,21 +82,21 @@ const AdminReports = () => {
                         <FaCalendarAlt />
                     </div>
                     <div className="adminreports-card-label">Total Bookings</div>
-                    <div className="adminreports-card-value">{dailyStats.totalBookings}</div>
+                    <div className="adminreports-card-value">{dailyData.totalBookings}</div>
                 </div>
                 <div className="adminreports-summary-card">
                     <div className="adminreports-card-icon revenue">
                         <FaMoneyBillWave />
                     </div>
                     <div className="adminreports-card-label">Total Revenue</div>
-                    <div className="adminreports-card-value">₹ {dailyStats.totalRevenue.toLocaleString()}</div>
+                    <div className="adminreports-card-value">₹ {dailyData.totalRevenue.toLocaleString()}</div>
                 </div>
                 <div className="adminreports-summary-card">
                     <div className="adminreports-card-icon pending">
                         <FaExclamationTriangle />
                     </div>
                     <div className="adminreports-card-label">Pending Balance</div>
-                    <div className="adminreports-card-value">₹ {dailyStats.pendingBalance.toLocaleString()}</div>
+                    <div className="adminreports-card-value">₹ {dailyData.pendingBalance.toLocaleString()}</div>
                 </div>
             </div>
 
@@ -109,21 +109,21 @@ const AdminReports = () => {
                             <th>Court</th>
                             <th>Time</th>
                             <th>Amount</th>
-                            <th>Status</th>
+                            <th>Status Balance</th>
                         </tr>
                     </thead>
                     <tbody>
-                        {dailyBookings.map(booking => (
-                            <tr key={booking.id}>
-                                <td className="fw-bold">{booking.customer}</td>
+                        {dailyData.bookings.map((booking, idx) => (
+                            <tr key={idx}>
+                                <td className="fw-bold">{booking.customerName}</td>
                                 <td>
                                     <Badge bg="light" text="dark" className="border">{booking.court}</Badge>
                                 </td>
                                 <td>{booking.time}</td>
-                                <td className="adminreports-amount positive">₹ {booking.amount}</td>
+                                <td className="adminreports-amount positive">₹ {booking.totalAmount}</td>
                                 <td>
-                                    <span className={`adminreports-badge ${booking.status === 'Paid' ? 'adminreports-badge-paid' : 'adminreports-badge-pending'}`}>
-                                        {booking.status}
+                                    <span className={`adminreports-badge ${booking.balance === 0 ? 'adminreports-badge-paid' : 'adminreports-badge-pending'}`}>
+                                        {booking.balance === 0 ? 'Paid' : `₹${booking.balance} Bal`}
                                     </span>
                                 </td>
                             </tr>
@@ -143,30 +143,30 @@ const AdminReports = () => {
                         <FaCalendarAlt />
                     </div>
                     <div className="adminreports-card-label">Total Bookings</div>
-                    <div className="adminreports-card-value">{monthlyStats.totalBookings}</div>
+                    <div className="adminreports-card-value">{monthlyData.summary.totalBookings}</div>
                 </div>
                 <div className="adminreports-summary-card">
                     <div className="adminreports-card-icon collection">
                         <FaMoneyBillWave />
                     </div>
                     <div className="adminreports-card-label">Total Collection</div>
-                    <div className="adminreports-card-value">₹ {monthlyStats.totalCollection.toLocaleString()}</div>
+                    <div className="adminreports-card-value">₹ {monthlyData.summary.totalCollection.toLocaleString()}</div>
                 </div>
                 <div className="adminreports-summary-card">
                     <div className="adminreports-card-icon pending">
                         <FaExclamationTriangle />
                     </div>
                     <div className="adminreports-card-label">Pending Balance</div>
-                    <div className="adminreports-card-value">₹ {monthlyStats.pendingBalance.toLocaleString()}</div>
+                    <div className="adminreports-card-value">₹ {monthlyData.summary.pendingBalance.toLocaleString()}</div>
                 </div>
             </div>
 
             <div className="adminreports-chart-container">
                 <h5 className="adminreports-chart-title">Monthly Trend - Bookings & Revenue</h5>
                 <ResponsiveContainer width="100%" height={300}>
-                    <LineChart data={monthlyTrendData}>
+                    <LineChart data={monthlyData.dailyTrend}>
                         <CartesianGrid strokeDasharray="3 3" />
-                        <XAxis dataKey="date" />
+                        <XAxis dataKey="day" />
                         <YAxis yAxisId="left" />
                         <YAxis yAxisId="right" orientation="right" />
                         <Tooltip />
@@ -180,75 +180,82 @@ const AdminReports = () => {
     );
 
     // Render Revenue Report
-    const renderRevenueReport = () => (
-        <>
-            <div className="adminreports-summary-cards">
-                <div className="adminreports-summary-card">
-                    <div className="adminreports-card-icon revenue">
-                        <FaChartLine />
-                    </div>
-                    <div className="adminreports-card-label">Total Revenue</div>
-                    <div className="adminreports-card-value">₹ {revenueStats.totalRevenue.toLocaleString()}</div>
-                </div>
-                <div className="adminreports-summary-card">
-                    <div className="adminreports-card-icon bookings">
-                        <FaMoneyBillWave />
-                    </div>
-                    <div className="adminreports-card-label">Weekday Revenue</div>
-                    <div className="adminreports-card-value">₹ {revenueStats.weekdayRevenue.toLocaleString()}</div>
-                </div>
-                <div className="adminreports-summary-card">
-                    <div className="adminreports-card-icon collection">
-                        <FaMoneyBillWave />
-                    </div>
-                    <div className="adminreports-card-label">Weekend Revenue</div>
-                    <div className="adminreports-card-value">₹ {revenueStats.weekendRevenue.toLocaleString()}</div>
-                </div>
-            </div>
+    const renderRevenueReport = () => {
+        const weekdayWeekendChartData = [
+            { name: 'Weekday', value: revenueData.weekdayVsWeekend.weekday },
+            { name: 'Weekend', value: revenueData.weekdayVsWeekend.weekend }
+        ];
 
-            <div className="row g-3">
-                <div className="col-md-8">
-                    <div className="adminreports-chart-container">
-                        <h5 className="adminreports-chart-title">Court-wise Revenue Breakdown</h5>
-                        <ResponsiveContainer width="100%" height={300}>
-                            <BarChart data={courtRevenueData}>
-                                <CartesianGrid strokeDasharray="3 3" />
-                                <XAxis dataKey="court" />
-                                <YAxis />
-                                <Tooltip />
-                                <Legend />
-                                <Bar dataKey="revenue" fill="#E63946" name="Revenue (₹)" />
-                            </BarChart>
-                        </ResponsiveContainer>
+        return (
+            <>
+                <div className="adminreports-summary-cards">
+                    <div className="adminreports-summary-card">
+                        <div className="adminreports-card-icon revenue">
+                            <FaChartLine />
+                        </div>
+                        <div className="adminreports-card-label">Total Revenue</div>
+                        <div className="adminreports-card-value">₹ {revenueData.totalRevenue.toLocaleString()}</div>
+                    </div>
+                    <div className="adminreports-summary-card">
+                        <div className="adminreports-card-icon bookings">
+                            <FaMoneyBillWave />
+                        </div>
+                        <div className="adminreports-card-label">Weekday Revenue</div>
+                        <div className="adminreports-card-value">₹ {revenueData.weekdayVsWeekend.weekday.toLocaleString()}</div>
+                    </div>
+                    <div className="adminreports-summary-card">
+                        <div className="adminreports-card-icon collection">
+                            <FaMoneyBillWave />
+                        </div>
+                        <div className="adminreports-card-label">Weekend Revenue</div>
+                        <div className="adminreports-card-value">₹ {revenueData.weekdayVsWeekend.weekend.toLocaleString()}</div>
                     </div>
                 </div>
-                <div className="col-md-4">
-                    <div className="adminreports-chart-container">
-                        <h5 className="adminreports-chart-title">Weekday vs Weekend</h5>
-                        <ResponsiveContainer width="100%" height={300}>
-                            <PieChart>
-                                <Pie
-                                    data={weekdayWeekendData}
-                                    cx="50%"
-                                    cy="50%"
-                                    labelLine={false}
-                                    label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
-                                    outerRadius={80}
-                                    fill="#8884d8"
-                                    dataKey="value"
-                                >
-                                    {weekdayWeekendData.map((entry, index) => (
-                                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                                    ))}
-                                </Pie>
-                                <Tooltip />
-                            </PieChart>
-                        </ResponsiveContainer>
+
+                <div className="row g-3">
+                    <div className="col-md-8">
+                        <div className="adminreports-chart-container">
+                            <h5 className="adminreports-chart-title">Court-wise Revenue Breakdown</h5>
+                            <ResponsiveContainer width="100%" height={300}>
+                                <BarChart data={revenueData.courtWise}>
+                                    <CartesianGrid strokeDasharray="3 3" />
+                                    <XAxis dataKey="court" />
+                                    <YAxis />
+                                    <Tooltip />
+                                    <Legend />
+                                    <Bar dataKey="amount" fill="#E63946" name="Revenue (₹)" />
+                                </BarChart>
+                            </ResponsiveContainer>
+                        </div>
+                    </div>
+                    <div className="col-md-4">
+                        <div className="adminreports-chart-container">
+                            <h5 className="adminreports-chart-title">Weekday vs Weekend</h5>
+                            <ResponsiveContainer width="100%" height={300}>
+                                <PieChart>
+                                    <Pie
+                                        data={weekdayWeekendChartData}
+                                        cx="50%"
+                                        cy="50%"
+                                        labelLine={false}
+                                        label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+                                        outerRadius={80}
+                                        fill="#8884d8"
+                                        dataKey="value"
+                                    >
+                                        {weekdayWeekendChartData.map((entry, index) => (
+                                            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                                        ))}
+                                    </Pie>
+                                    <Tooltip />
+                                </PieChart>
+                            </ResponsiveContainer>
+                        </div>
                     </div>
                 </div>
-            </div>
-        </>
-    );
+            </>
+        );
+    };
 
     // Render Pending Balance Report
     const renderPendingReport = () => (
@@ -259,14 +266,14 @@ const AdminReports = () => {
                         <FaExclamationTriangle />
                     </div>
                     <div className="adminreports-card-label">Total Pending Amount</div>
-                    <div className="adminreports-card-value">₹ {totalPending.toLocaleString()}</div>
+                    <div className="adminreports-card-value">₹ {pendingData.totalPending.toLocaleString()}</div>
                 </div>
                 <div className="adminreports-summary-card">
                     <div className="adminreports-card-icon bookings">
                         <FaCalendarAlt />
                     </div>
                     <div className="adminreports-card-label">Pending Bookings</div>
-                    <div className="adminreports-card-value">{pendingBalances.length}</div>
+                    <div className="adminreports-card-value">{pendingData.pendingBookings.length}</div>
                 </div>
             </div>
 
@@ -282,9 +289,9 @@ const AdminReports = () => {
                         </tr>
                     </thead>
                     <tbody>
-                        {pendingBalances.map(item => (
-                            <tr key={item.id}>
-                                <td className="fw-bold">{item.customer}</td>
+                        {pendingData.pendingBookings.map((item, idx) => (
+                            <tr key={idx}>
+                                <td className="fw-bold">{item.customerName}</td>
                                 <td>
                                     <Badge bg="light" text="dark" className="border">{item.court}</Badge>
                                 </td>
@@ -331,9 +338,11 @@ const AdminReports = () => {
                     <Form.Select
                         value={filters.court}
                         onChange={(e) => setFilters({ ...filters, court: e.target.value })}
+                        disabled={activeTab === 'monthly' || activeTab === 'pending'}
                     >
-                        {courts.map(court => (
-                            <option key={court} value={court}>{court}</option>
+                        <option value="All Courts">All Courts</option>
+                        {courtList.map(court => (
+                            <option key={court._id} value={court._id}>{court.name}</option>
                         ))}
                     </Form.Select>
                 </div>
@@ -365,10 +374,19 @@ const AdminReports = () => {
 
             {/* Tab Content */}
             <div className="mt-4">
-                {activeTab === 'daily' && renderDailyReport()}
-                {activeTab === 'monthly' && renderMonthlyReport()}
-                {activeTab === 'revenue' && renderRevenueReport()}
-                {activeTab === 'pending' && renderPendingReport()}
+                {loading ? (
+                    <div className="text-center py-5">
+                        <Spinner animation="border" variant="danger" />
+                        <p className="mt-2 text-muted">Loading {activeTab} report...</p>
+                    </div>
+                ) : (
+                    <>
+                        {activeTab === 'daily' && renderDailyReport()}
+                        {activeTab === 'monthly' && renderMonthlyReport()}
+                        {activeTab === 'revenue' && renderRevenueReport()}
+                        {activeTab === 'pending' && renderPendingReport()}
+                    </>
+                )}
             </div>
         </div>
     );
