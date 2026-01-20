@@ -40,6 +40,15 @@ const reportService = {
     },
 
     /**
+     * Fetch recurring booking report data
+     * @param {Object} params - { from, to }
+     */
+    getRecurringReport: async (params) => {
+        const response = await axiosInstance.get('/admin/reports/recurring', { params });
+        return response.data;
+    },
+
+    /**
      * Fetch list of courts for filters
      */
     getCourts: async () => {

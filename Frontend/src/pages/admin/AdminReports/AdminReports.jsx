@@ -21,6 +21,16 @@ const AdminReports = () => {
     const [monthlyData, setMonthlyData] = useState({ summary: { totalBookings: 0, totalCollection: 0, pendingBalance: 0 }, dailyTrend: [] });
     const [revenueData, setRevenueData] = useState({ totalRevenue: 0, revenueTrend: [], weekdayVsWeekend: { weekday: 0, weekend: 0 }, courtWise: [] });
     const [pendingData, setPendingData] = useState({ totalPending: 0, pendingBookings: [] });
+    const [recurringData, setRecurringData] = useState({
+        totalRules: 0,
+        activeRules: 0,
+        pausedRules: 0,
+        summary: { totalBookings: 0, totalRevenue: 0, pendingBalance: 0 },
+        statusBreakdown: [],
+        courtWise: [],
+        dailyTrend: [],
+        rules: []
+    });
 
     const fetchCourts = async () => {
         try {
@@ -54,6 +64,12 @@ const AdminReports = () => {
             } else if (activeTab === 'pending') {
                 const data = await reportService.getPendingReport();
                 setPendingData(data);
+            } else if (activeTab === 'recurring') {
+                const data = await reportService.getRecurringReport({
+                    from: filters.dateFrom,
+                    to: filters.dateTo
+                });
+                setRecurringData(data);
             }
         } catch (error) {
             console.error(`Error fetching ${activeTab} report:`, error);
@@ -305,6 +321,107 @@ const AdminReports = () => {
         </>
     );
 
+    // Render Recurring Booking Report
+    const renderRecurringReport = () => (
+        <>
+            <div className="adminreports-summary-cards">
+                <div className="adminreports-summary-card">
+                    <div className="adminreports-card-icon bookings">
+                        <FaCalendarAlt />
+                    </div>
+                    <div className="adminreports-card-label">Total Rules</div>
+                    <div className="adminreports-card-value">{recurringData.totalRules}</div>
+                </div>
+                <div className="adminreports-summary-card">
+                    <div className="adminreports-card-icon revenue">
+                        <FaChartLine />
+                    </div>
+                    <div className="adminreports-card-label">Active Rules</div>
+                    <div className="adminreports-card-value">{recurringData.activeRules}</div>
+                </div>
+                <div className="adminreports-summary-card">
+                    <div className="adminreports-card-icon pending">
+                        <FaExclamationTriangle />
+                    </div>
+                    <div className="adminreports-card-label">Paused Rules</div>
+                    <div className="adminreports-card-value">{recurringData.pausedRules}</div>
+                </div>
+                <div className="adminreports-summary-card">
+                    <div className="adminreports-card-icon revenue">
+                        <FaMoneyBillWave />
+                    </div>
+                    <div className="adminreports-card-label">Total Revenue</div>
+                    <div className="adminreports-card-value">
+                        ₹ {(recurringData.summary?.totalRevenue || 0).toLocaleString()}
+                    </div>
+                </div>
+            </div>
+
+            <div className="row mt-4">
+                <div className="col-12 mb-4">
+                    <div className="adminreports-chart-card">
+                        <h5 className="adminreports-chart-title">Revenue Trend</h5>
+                        <ResponsiveContainer width="100%" height={350}>
+                            <LineChart data={recurringData.dailyTrend}>
+                                <CartesianGrid strokeDasharray="3 3" />
+                                <XAxis dataKey="date" />
+                                <YAxis />
+                                <Tooltip />
+                                <Legend />
+                                <Line type="monotone" dataKey="revenue" stroke="#E63946" strokeWidth={2} name="Revenue (₹)" />
+                            </LineChart>
+                        </ResponsiveContainer>
+                    </div>
+                </div>
+            </div>
+
+            <div className="adminreports-table-card">
+                <h5 className="adminreports-table-title">Recurring Booking Rules</h5>
+                <Table hover responsive className="adminreports-table">
+                    <thead>
+                        <tr>
+                            <th>Customer</th>
+                            <th>Court</th>
+                            <th>Type</th>
+                            <th>Days/Date</th>
+                            <th>Time Slot</th>
+                            <th>Period</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {recurringData.rules.map((rule) => (
+                            <tr key={rule._id}>
+                                <td className="fw-bold">{rule.customerName}</td>
+                                <td>
+                                    <Badge bg="light" text="dark" className="border">
+                                        {rule.sportType} - {rule.court}
+                                    </Badge>
+                                </td>
+                                <td>{rule.recurrenceType}</td>
+                                <td>
+                                    {rule.recurrenceType === 'WEEKLY'
+                                        ? rule.daysOfWeek?.join(', ')
+                                        : `Day ${rule.fixedDate}`}
+                                </td>
+                                <td>{rule.timeSlot}</td>
+                                <td className="small">
+                                    {new Date(rule.startDate).toLocaleDateString('en-IN')} - {' '}
+                                    {rule.endDate ? new Date(rule.endDate).toLocaleDateString('en-IN') : 'Ongoing'}
+                                </td>
+                                <td>
+                                    <Badge bg={rule.status === 'ACTIVE' ? 'success' : 'warning'}>
+                                        {rule.status}
+                                    </Badge>
+                                </td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </Table>
+            </div>
+        </>
+    );
+
     return (
         <div className="adminreports-container rounded-4 shadow-sm">
             {/* Header */}
@@ -370,6 +487,11 @@ const AdminReports = () => {
                         Pending Balance
                     </Nav.Link>
                 </Nav.Item>
+                <Nav.Item>
+                    <Nav.Link active={activeTab === 'recurring'} onClick={() => setActiveTab('recurring')}>
+                        Recurring Bookings
+                    </Nav.Link>
+                </Nav.Item>
             </Nav>
 
             {/* Tab Content */}
@@ -385,6 +507,7 @@ const AdminReports = () => {
                         {activeTab === 'monthly' && renderMonthlyReport()}
                         {activeTab === 'revenue' && renderRevenueReport()}
                         {activeTab === 'pending' && renderPendingReport()}
+                        {activeTab === 'recurring' && renderRecurringReport()}
                     </>
                 )}
             </div>

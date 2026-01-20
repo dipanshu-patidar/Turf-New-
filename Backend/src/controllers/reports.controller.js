@@ -143,10 +143,46 @@ const getMonthlyReport = async (req, res) => {
             }
         ]);
 
+        // 2. Get NEW Recurring Rules in this month (for Advance Revenue)
+        const RecurringBooking = require('../models/RecurringBooking.model');
+        const newRulesInMonth = await RecurringBooking.find({
+            createdAt: { $gte: startOfMonth, $lte: endOfMonth },
+            advancePaid: { $gt: 0 }
+        });
+
+        let totalAdvanceRevenue = 0;
+        const advanceTrendMap = {}; // day -> amount
+
+        newRulesInMonth.forEach(rule => {
+            const amount = rule.advancePaid || 0;
+            totalAdvanceRevenue += amount;
+
+            const day = rule.createdAt.getDate();
+            advanceTrendMap[day] = (advanceTrendMap[day] || 0) + amount;
+        });
+
         const result = {
             summary: monthlyData[0].summary[0] || { totalBookings: 0, totalCollection: 0, pendingBalance: 0 },
             dailyTrend: monthlyData[0].dailyTrend
         };
+
+        // Merge Advance Revenue
+        result.summary.totalCollection += totalAdvanceRevenue;
+
+        // Merge Daily Trend
+        const trendMap = {};
+        result.dailyTrend.forEach(d => { trendMap[d.day] = d; });
+
+        Object.keys(advanceTrendMap).forEach(day => {
+            const dayNum = parseInt(day);
+            if (trendMap[dayNum]) {
+                trendMap[dayNum].revenue += advanceTrendMap[dayNum];
+            } else {
+                trendMap[dayNum] = { day: dayNum, bookings: 0, revenue: advanceTrendMap[dayNum] };
+            }
+        });
+
+        result.dailyTrend = Object.values(trendMap).sort((a, b) => a.day - b.day);
 
         res.json(result);
     } catch (error) {
@@ -245,17 +281,81 @@ const getRevenueReport = async (req, res) => {
             }
         ]);
 
+        // 2. NEW Recurring Rules (Advance Revenue)
+        const RecurringBooking = require('../models/RecurringBooking.model');
+        const newRulesInPeriod = await RecurringBooking.find({
+            createdAt: { $gte: startDate, $lte: endDate },
+            advancePaid: { $gt: 0 }
+        }).populate('courtId', 'name');
+
+        let totalAdvanceRevenue = 0;
+        const advanceTrendMap = {};
+        const advanceCourtMap = {};
+        const advanceWeekdayWeekend = { weekday: 0, weekend: 0 };
+
+        newRulesInPeriod.forEach(rule => {
+            const amount = rule.advancePaid || 0;
+            totalAdvanceRevenue += amount;
+
+            // Trend
+            const dateStr = rule.createdAt.toISOString().split('T')[0];
+            advanceTrendMap[dateStr] = (advanceTrendMap[dateStr] || 0) + amount;
+
+            // Court
+            const courtName = rule.courtId ? rule.courtId.name : 'Unknown';
+            advanceCourtMap[courtName] = (advanceCourtMap[courtName] || 0) + amount;
+
+            // Weekday vs Weekend
+            const day = rule.createdAt.getDay(); // 0 (Sun) to 6 (Sat)
+            if (day === 0 || day === 6) {
+                advanceWeekdayWeekend.weekend += amount;
+            } else {
+                advanceWeekdayWeekend.weekday += amount;
+            }
+        });
+
         const totals = report[0].totals[0] || { totalRevenue: 0 };
         const weekdayVsWeekend = { weekday: 0, weekend: 0 };
         report[0].weekdayVsWeekend.forEach(item => {
             weekdayVsWeekend[item._id] = item.amount;
         });
 
+        // Merge Advance
+        totals.totalRevenue += totalAdvanceRevenue;
+        weekdayVsWeekend.weekday += advanceWeekdayWeekend.weekday;
+        weekdayVsWeekend.weekend += advanceWeekdayWeekend.weekend;
+
+        // Merge Trend
+        let trend = report[0].trend;
+        const trendMap = {};
+        trend.forEach(t => { trendMap[t.date] = t; });
+        Object.keys(advanceTrendMap).forEach(date => {
+            if (trendMap[date]) {
+                trendMap[date].amount += advanceTrendMap[date];
+            } else {
+                trendMap[date] = { date, amount: advanceTrendMap[date] };
+            }
+        });
+        trend = Object.values(trendMap).sort((a, b) => new Date(a.date) - new Date(b.date));
+
+        // Merge Court Wise
+        let courtWise = report[0].courtWise;
+        const courtMap = {};
+        courtWise.forEach(c => { courtMap[c.court] = c; });
+        Object.keys(advanceCourtMap).forEach(court => {
+            if (courtMap[court]) {
+                courtMap[court].amount += advanceCourtMap[court];
+            } else {
+                courtMap[court] = { court, amount: advanceCourtMap[court] };
+            }
+        });
+        courtWise = Object.values(courtMap);
+
         res.json({
             totalRevenue: totals.totalRevenue,
-            revenueTrend: report[0].trend,
+            revenueTrend: trend,
             weekdayVsWeekend,
-            courtWise: report[0].courtWise
+            courtWise
         });
     } catch (error) {
         res.status(500).json({ message: error.message });
@@ -306,11 +406,294 @@ const getPendingBalanceReport = async (req, res) => {
             }
         ]);
 
-        if (pendingData.length === 0) {
+        // Fetch Recurring Booking Pending Balances
+        const RecurringBooking = require('../models/RecurringBooking.model');
+        const recurringPending = await RecurringBooking.find({
+            paymentStatus: { $in: ['PENDING', 'PARTIAL'] },
+            status: { $in: ['ACTIVE', 'PAUSED'] } // Only active/paused rules
+        }).populate('courtId', 'name');
+
+        let totalRecurringPending = 0;
+        const recurringPendingItems = [];
+
+        recurringPending.forEach(rule => {
+            // Assume monthlyAmount is the total deal value for now, or fallback logic
+            const total = rule.monthlyAmount || 0;
+            const paid = rule.advancePaid || 0;
+            const pending = total - paid;
+
+            if (pending > 0) {
+                totalRecurringPending += pending;
+                recurringPendingItems.push({
+                    customerName: rule.customerName + ' (Recurring)',
+                    court: rule.courtId ? rule.courtId.name : 'Unknown',
+                    balance: pending,
+                    bookingDate: rule.createdAt.toISOString().split('T')[0] // Use creation date for list
+                });
+            }
+        });
+
+        const totalPending = (pendingData[0]?.totalPending || 0) + totalRecurringPending;
+        const pendingBookings = [...(pendingData[0]?.pendingBookings || []), ...recurringPendingItems];
+
+        if (totalPending === 0 && pendingBookings.length === 0) {
             return res.json({ totalPending: 0, pendingBookings: [] });
         }
 
-        res.json(pendingData[0]);
+        res.json({
+            totalPending,
+            pendingBookings: pendingBookings.sort((a, b) => new Date(b.bookingDate) - new Date(a.bookingDate))
+        });
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
+/**
+ * GET /api/admin/reports/recurring
+ * Query: from (YYYY-MM-DD), to (YYYY-MM-DD)
+ */
+const getRecurringBookingReport = async (req, res) => {
+    try {
+        const { from, to } = req.query;
+        if (!from || !to) return res.status(400).json({ message: 'From and To dates are required' });
+
+        const startDate = new Date(from);
+        startDate.setHours(0, 0, 0, 0);
+        const endDate = new Date(to);
+        endDate.setHours(23, 59, 59, 999);
+
+        console.log('📅 Date Range:', { from, to, startDate, endDate });
+
+        const RecurringBooking = require('../models/RecurringBooking.model');
+
+        // 1. Get ALL recurring rules active in the period (for displaying the list)
+        // Rule overlaps with range if: (Start <= RangeEnd) AND (End >= RangeStart OR End is null)
+        const recurringRules = await RecurringBooking.find({
+            $or: [
+                { startDate: { $lte: endDate }, endDate: { $gte: startDate } },
+                { startDate: { $lte: endDate }, endDate: null }
+            ]
+        }).populate('courtId', 'name sportType');
+
+        // 2. Get NEW recurring rules created in this period (for Advance Payment Revenue)
+        // We consider advance payment as revenue "collected" on the day the rule was created.
+        const newRulesInPeriod = await RecurringBooking.find({
+            createdAt: { $gte: startDate, $lte: endDate },
+            advancePaid: { $gt: 0 }
+        }).populate('courtId', 'name');
+
+        let totalAdvanceRevenue = 0;
+        const advanceTrendMap = {}; // date -> amount
+        const advanceCourtMap = {}; // courtName -> amount
+
+        newRulesInPeriod.forEach(rule => {
+            const amount = rule.advancePaid || 0;
+            totalAdvanceRevenue += amount;
+
+            // Trend
+            const day = rule.createdAt.toISOString().split('T')[0];
+            advanceTrendMap[day] = (advanceTrendMap[day] || 0) + amount;
+
+            // Court
+            const courtName = rule.courtId ? rule.courtId.name : 'Unknown';
+            advanceCourtMap[courtName] = (advanceCourtMap[courtName] || 0) + amount;
+        });
+
+        console.log('💰 Advance Revenue from New Rules:', totalAdvanceRevenue);
+
+
+        // 3. Get bookings generated from recurring rules (Accrual/Consumption Revenue)
+        const recurringBookings = await Booking.aggregate([
+            {
+                $match: {
+                    bookingSource: 'RECURRING',
+                    bookingDate: { $gte: startDate, $lte: endDate },
+                    status: { $ne: 'CANCELLED' }
+                }
+            },
+            {
+                $lookup: {
+                    from: 'payments',
+                    localField: '_id',
+                    foreignField: 'bookingId',
+                    as: 'payment'
+                }
+            },
+            {
+                $unwind: {
+                    path: '$payment',
+                    preserveNullAndEmptyArrays: true
+                }
+            },
+            {
+                $lookup: {
+                    from: 'courts',
+                    localField: 'courtId',
+                    foreignField: '_id',
+                    as: 'court'
+                }
+            },
+            {
+                $unwind: {
+                    path: '$court',
+                    preserveNullAndEmptyArrays: true
+                }
+            },
+            {
+                $facet: {
+                    summary: [
+                        {
+                            $group: {
+                                _id: null,
+                                totalBookings: { $sum: 1 },
+                                totalRevenue: {
+                                    $sum: {
+                                        $cond: [
+                                            { $ifNull: ['$payment', false] },
+                                            {
+                                                $subtract: [
+                                                    { $ifNull: ['$payment.totalAmount', 0] },
+                                                    { $ifNull: ['$payment.balanceAmount', 0] }
+                                                ]
+                                            },
+                                            0
+                                        ]
+                                    }
+                                },
+                                pendingBalance: {
+                                    $sum: { $ifNull: ['$payment.balanceAmount', 0] }
+                                }
+                            }
+                        }
+                    ],
+                    statusBreakdown: [
+                        {
+                            $group: {
+                                _id: '$status',
+                                count: { $sum: 1 }
+                            }
+                        }
+                    ],
+                    courtWise: [
+                        {
+                            $group: {
+                                _id: { $ifNull: ['$court.name', 'Unknown'] },
+                                bookings: { $sum: 1 },
+                                revenue: {
+                                    $sum: {
+                                        $cond: [
+                                            { $ifNull: ['$payment', false] },
+                                            {
+                                                $subtract: [
+                                                    { $ifNull: ['$payment.totalAmount', 0] },
+                                                    { $ifNull: ['$payment.balanceAmount', 0] }
+                                                ]
+                                            },
+                                            0
+                                        ]
+                                    }
+                                }
+                            }
+                        },
+                        { $project: { court: '$_id', bookings: 1, revenue: 1, _id: 0 } }
+                    ],
+                    dailyTrend: [
+                        {
+                            $group: {
+                                _id: { $dateToString: { format: '%Y-%m-%d', date: '$bookingDate' } },
+                                bookings: { $sum: 1 },
+                                revenue: {
+                                    $sum: {
+                                        $cond: [
+                                            { $ifNull: ['$payment', false] },
+                                            {
+                                                $subtract: [
+                                                    { $ifNull: ['$payment.totalAmount', 0] },
+                                                    { $ifNull: ['$payment.balanceAmount', 0] }
+                                                ]
+                                            },
+                                            0
+                                        ]
+                                    }
+                                }
+                            }
+                        },
+                        { $sort: { '_id': 1 } },
+                        { $project: { date: '$_id', bookings: 1, revenue: 1, _id: 0 } }
+                    ]
+                }
+            }
+        ]);
+
+        const summaryRes = recurringBookings[0].summary[0] || { totalBookings: 0, totalRevenue: 0, pendingBalance: 0 };
+        const statusBreakdown = recurringBookings[0].statusBreakdown;
+        let courtWise = recurringBookings[0].courtWise;
+        let dailyTrend = recurringBookings[0].dailyTrend;
+
+        // 4. Merge Advance Revenue into Results
+
+        // A. Summary
+        summaryRes.totalRevenue += totalAdvanceRevenue;
+
+        // B. Daily Trend (Merge/Add)
+        // Convert array to map for easy update
+        const trendMap = {};
+        dailyTrend.forEach(d => {
+            trendMap[d.date] = d;
+        });
+
+        Object.keys(advanceTrendMap).forEach(date => {
+            if (trendMap[date]) {
+                trendMap[date].revenue += advanceTrendMap[date];
+            } else {
+                trendMap[date] = { date, bookings: 0, revenue: advanceTrendMap[date] };
+            }
+        });
+
+        // Convert back to sorted array
+        dailyTrend = Object.values(trendMap).sort((a, b) => new Date(a.date) - new Date(b.date));
+
+
+        // C. Court Wise (Merge/Add)
+        const courtMap = {};
+        courtWise.forEach(c => {
+            courtMap[c.court] = c;
+        });
+
+        Object.keys(advanceCourtMap).forEach(courtName => {
+            if (courtMap[courtName]) {
+                courtMap[courtName].revenue += advanceCourtMap[courtName];
+            } else {
+                courtMap[courtName] = { court: courtName, bookings: 0, revenue: advanceCourtMap[courtName] };
+            }
+        });
+
+        courtWise = Object.values(courtMap);
+
+
+        res.json({
+            totalRules: recurringRules.length,
+            activeRules: recurringRules.filter(r => r.status === 'ACTIVE').length,
+            pausedRules: recurringRules.filter(r => r.status === 'PAUSED').length,
+            summary: summaryRes,
+            statusBreakdown,
+            courtWise,
+            dailyTrend,
+            rules: recurringRules.map(r => ({
+                _id: r._id,
+                customerName: r.customerName,
+                court: r.courtId?.name,
+                sportType: r.courtId?.sportType,
+                recurrenceType: r.recurrenceType,
+                daysOfWeek: r.daysOfWeek,
+                timeSlot: `${r.startTime} - ${r.endTime}`,
+                status: r.status,
+                startDate: r.startDate,
+                endDate: r.endDate,
+                advancePaid: r.advancePaid // Added for visibility if needed
+            }))
+        });
     } catch (error) {
         res.status(500).json({ message: error.message });
     }
@@ -320,5 +703,6 @@ module.exports = {
     getDailyReport,
     getMonthlyReport,
     getRevenueReport,
-    getPendingBalanceReport
+    getPendingBalanceReport,
+    getRecurringBookingReport
 };
