@@ -154,6 +154,11 @@ const AdminBooking = () => {
 
     // Handle booked slot click
     const handleBookedSlotClick = (booking, courtName) => {
+        if (booking.isReadOnly) {
+            toast.error("Recurring Booking: Cannot edit or delete manually.");
+            return;
+        }
+
         setEditingBooking({
             ...booking,
             courtName,
@@ -297,11 +302,15 @@ const AdminBooking = () => {
         const pStatus = (booking.paymentStatus || '').toUpperCase();
         return (
             <div
-                className="adminbooking-card"
+                className={`adminbooking-card ${booking.isReadOnly ? 'recurring-booking' : ''}`}
                 onClick={() => handleBookedSlotClick(booking, courtName)}
+                style={booking.isReadOnly ? { borderLeft: '4px solid #6f42c1', backgroundColor: '#f3e5f5', color: '#000' } : {}}
             >
                 <div>
-                    <div className="adminbooking-card-customer">{booking.customerName}</div>
+                    <div className="adminbooking-card-customer">
+                        {booking.customerName}
+                        {booking.isReadOnly && <span style={{ marginLeft: '5px', fontSize: '0.8em', color: '#6f42c1' }}>↻</span>}
+                    </div>
                     <div className="adminbooking-card-time">{formatTime12h(booking.startTime)} - {formatTime12h(booking.endTime)}</div>
                     <div className="adminbooking-card-phone">📞 {booking.customerPhone}</div>
                 </div>
