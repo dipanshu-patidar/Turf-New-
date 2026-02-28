@@ -72,7 +72,7 @@ const Login = () => {
                     }}
                 >
                     <div className="mb-4 d-inline-block rounded p-3" style={{ background: 'rgba(255,255,255,0.1)' }}>
-                        <img src="/src/assets/Logo.png.jpeg" alt="Turf Pro Logo" style={{ maxWidth: '80px', height: 'auto', objectFit: 'contain' }} />
+                        <img src="/Logo.jpeg" alt="Turf Pro Logo" style={{ maxWidth: '80px', height: 'auto', objectFit: 'contain' }} />
                     </div>
                     <h3 className="m-0 fw-bold text-white mb-2" style={{ fontFamily: 'sans-serif' }}>TURF<span className="text-success">PRO</span></h3>
                     <small className="text-white-50 d-block mb-4" style={{ fontSize: '0.7rem' }}>Smart Turf Management</small>
