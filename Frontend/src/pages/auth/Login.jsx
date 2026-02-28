@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Container, Form, Button, Alert, InputGroup, Spinner } from 'react-bootstrap';
 import { useNavigate } from 'react-router-dom';
-import { FaUser, FaLock, FaCog } from 'react-icons/fa';
+import { FaUser, FaLock } from 'react-icons/fa';
 import toast from 'react-hot-toast';
 import api from '../../api/axiosInstance';
 
@@ -71,13 +71,11 @@ const Login = () => {
                         boxShadow: '0 8px 32px 0 rgba(0, 0, 0, 0.37)'
                     }}
                 >
-                    <div className="mb-4 d-inline-block border border-2 border-danger rounded p-2">
-                        <div className="d-flex align-items-center justify-content-center flex-column">
-                            <FaCog size={40} className="text-white mb-1" />
-                            <h3 className="m-0 fw-bold text-white" style={{ fontFamily: 'sans-serif' }}>TURF<span className="text-success">PRO</span></h3>
-                            <small className="text-white-50" style={{ fontSize: '0.7rem' }}>Smart Turf Management</small>
-                        </div>
+                    <div className="mb-4 d-inline-block rounded p-3" style={{ background: 'rgba(255,255,255,0.1)' }}>
+                        <img src="/src/assets/Logo.png.jpeg" alt="Turf Pro Logo" style={{ maxWidth: '80px', height: 'auto', objectFit: 'contain' }} />
                     </div>
+                    <h3 className="m-0 fw-bold text-white mb-2" style={{ fontFamily: 'sans-serif' }}>TURF<span className="text-success">PRO</span></h3>
+                    <small className="text-white-50 d-block mb-4" style={{ fontSize: '0.7rem' }}>Smart Turf Management</small>
 
                     <h5 className="mb-4 fw-light text-uppercase" style={{ letterSpacing: '1px' }}>Login to your account</h5>
 

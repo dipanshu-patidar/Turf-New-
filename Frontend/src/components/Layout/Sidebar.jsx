@@ -3,7 +3,7 @@ import { Nav } from 'react-bootstrap';
 import { Link, useLocation } from 'react-router-dom';
 import {
     FaTachometerAlt, FaUserShield, FaMoneyBillWave, FaListAlt,
-    FaKey, FaUsers, FaCalendarAlt, FaClock, FaChartBar, FaCog, FaPlusCircle, FaLeaf
+    FaKey, FaUsers, FaCalendarAlt, FaClock, FaChartBar, FaCog, FaPlusCircle
 } from 'react-icons/fa';
 
 const Sidebar = ({ role, isOpen, toggleSidebar }) => {
@@ -48,8 +48,8 @@ const Sidebar = ({ role, isOpen, toggleSidebar }) => {
             style={{ overflowX: 'hidden', zIndex: 1000, transition: 'width 0.3s cubic-bezier(0.4, 0, 0.2, 1)' }}
         >
             <div className={`p-4 d-flex align-items-center border-bottom border-light border-opacity-10 ${!isOpen ? 'justify-content-center px-2' : ''}`}>
-                <div className="bg-primary rounded p-2 d-flex align-items-center justify-content-center shadow-sm icon-shadow">
-                    <FaLeaf size={isOpen ? 18 : 22} className="text-white" />
+                <div className="rounded d-flex align-items-center justify-content-center shadow-sm icon-shadow" style={{ minWidth: isOpen ? '50px' : '45px', width: isOpen ? '50px' : '45px', height: isOpen ? '50px' : '45px' }}>
+                    <img src="/src/assets/Logo.png.jpeg" alt="Turf Pro Logo" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
                 </div>
                 <div className={`ms-3 transition-opacity ${isOpen ? 'd-block' : 'd-none'}`}>
                     <h5 className="m-0 fw-bold text-white ls-1 text-nowrap">TURF<span className="text-primary">PRO</span></h5>

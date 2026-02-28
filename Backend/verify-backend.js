@@ -3,7 +3,7 @@ const axios = require('axios');
 const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
 async function verify() {
-    const baseURL = 'http://localhost:5000/api';
+    const baseURL = 'https://turfbooking-production-bce3.up.railway.app/api';
     console.log('--- Verifying Admin Dashboard APIs ---');
 
     try {
