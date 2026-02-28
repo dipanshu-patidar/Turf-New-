@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 const axiosInstance = axios.create({
-    baseURL: 'https://turfbooking-production-bce3.up.railway.app/api',
+    baseURL: 'https://turfdemo-production.up.railway.app/api',
 });
 
 // Add a request interceptor
