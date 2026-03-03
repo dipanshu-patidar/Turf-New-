@@ -5,31 +5,49 @@ const connectDB = require('../src/config/db');
 
 dotenv.config();
 
-const seedAdmin = async () => {
+const seedUsers = async () => {
     try {
         await connectDB();
 
-        const adminExists = await User.findOne({ email: 'admin@test.com' });
-
-        if (adminExists) {
+        // ensure admin exists
+        const adminEmail = 'admin@gmail.com';
+        let admin = await User.findOne({ email: adminEmail });
+        if (!admin) {
+            admin = await User.create({
+                name: 'Super Admin',
+                email: adminEmail,
+                password: 'admin123', // hashed by pre-save hook
+                role: 'ADMIN',
+                status: 'ACTIVE',
+            });
+            console.log(`Admin user created: ${admin.email} / admin123`);
+        } else {
             console.log('Admin user already exists');
-            process.exit();
         }
 
-        const user = await User.create({
-            name: 'Super Admin',
-            email: 'admin@test.com',
-            password: 'password123', // Will be hashed by pre-save hook
-            role: 'ADMIN',
-            status: 'ACTIVE',
-        });
+        // ensure staff user exists
+        const staffEmail = 'john@gmail.com';
+        let staff = await User.findOne({ email: staffEmail });
+        if (!staff) {
+            staff = await User.create({
+                name: 'John Doe',
+                email: staffEmail,
+                password: 'john@123',
+                role: 'STAFF',
+                status: 'ACTIVE',
+            });
+            console.log(`Staff user created: ${staff.email} / john@123`);
+        } else {
+            console.log('Staff user already exists');
+        }
 
-        console.log(`Admin user created: ${user.email} / password123`);
         process.exit();
     } catch (error) {
         console.error(`Error: ${error.message}`);
         process.exit(1);
     }
 };
+
+seedUsers();
 
 seedAdmin();

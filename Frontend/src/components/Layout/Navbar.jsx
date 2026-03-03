@@ -49,7 +49,7 @@ const AppNavbar = ({ toggleSidebar, isOpen, role }) => {
     return (
         <Navbar expand="lg" className="navbar-custom sticky-top py-3 px-4">
             <Container fluid className="px-0">
-                <div className="d-flex align-items-center">
+                <div className="d-flex align-items-center flex-grow-1">
                     <Button
                         variant="link"
                         onClick={toggleSidebar}
@@ -58,16 +58,21 @@ const AppNavbar = ({ toggleSidebar, isOpen, role }) => {
                     >
                         <FaBars size={18} />
                     </Button>
+                    {/* <div className="contact-marquee-highlight d-none d-lg-block ms-2 flex-grow-1">
+                        <span className="text-white fw-bold">
+                            📞 97521 00980  •  🌐 kiaantechnology.com  •  📧 ltlalit15@gmail.com
+                        </span>
+                    </div> */}
                 </div>
 
                 <Nav className="ms-auto align-items-center flex-row gap-3">
-                    {/* Search Icon (Placeholder) */}
                     <div className="d-none d-md-flex align-items-center bg-light rounded-pill px-3 py-2 cursor-pointer shadow-sm border border-light">
                         <FaSearch className="text-muted me-2" size={14} />
                         <span className="text-muted small">Search...</span>
                     </div>
 
-                    {/* User Profile Dropdown */}
+
+
                     <Dropdown align="end">
                         <Dropdown.Toggle variant="light" id="dropdown-basic" className="d-flex align-items-center border-0 bg-transparent p-0 shadow-none show-dropdown-arrow-none">
                             <div className="d-flex align-items-center bg-white rounded-pill pe-3 shadow-sm border border-light">
@@ -106,5 +111,33 @@ const AppNavbar = ({ toggleSidebar, isOpen, role }) => {
         </Navbar>
     );
 };
+
+
+// simple marquee animation via CSS
+const marqueeStyle = document.createElement('style');
+marqueeStyle.innerHTML = `
+.contact-marquee-highlight {
+    overflow: hidden;
+    white-space: nowrap;
+    position: relative;
+    width: 100%;       /* fill available space */
+    background: rgba(217, 4, 41, 0.8);
+    padding: 2px 6px;
+    border-radius: 4px;
+}
+.contact-marquee-highlight span {
+    display: inline-block;
+    padding-left: 100%;
+    animation: marquee 12s linear infinite;
+}
+@keyframes marquee {
+    from { transform: translateX(0%); }
+    to { transform: translateX(-100%); }
+}
+.contact-marquee-highlight:hover span {
+    animation-play-state: paused;
+}
+`;
+document.head.appendChild(marqueeStyle);
 
 export default AppNavbar;

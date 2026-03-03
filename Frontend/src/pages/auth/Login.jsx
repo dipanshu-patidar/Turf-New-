@@ -6,6 +6,10 @@ import toast from 'react-hot-toast';
 import api from '../../api/axiosInstance';
 
 const Login = () => {
+    // default credentials for quick login
+    const DEFAULT_ADMIN = { email: 'admin@gmail.com', password: 'admin123' };
+    const DEFAULT_STAFF = { email: 'john@gmail.com', password: 'john@123' };
+
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [error, setError] = useState('');
@@ -81,6 +85,29 @@ const Login = () => {
 
                     {error && <Alert variant="danger" className="py-2 small">{error}</Alert>}
 
+                    {/* helper buttons to autofill credentials */}
+                    <div className="d-flex justify-content-between mb-3">
+                        <Button
+                            variant="outline-light"
+                            size="sm"
+                            onClick={() => {
+                                setEmail(DEFAULT_ADMIN.email);
+                                setPassword(DEFAULT_ADMIN.password);
+                            }}
+                        >
+                            Use Admin
+                        </Button>
+                        <Button
+                            variant="outline-light"
+                            size="sm"
+                            onClick={() => {
+                                setEmail(DEFAULT_STAFF.email);
+                                setPassword(DEFAULT_STAFF.password);
+                            }}
+                        >
+                            Use Staff
+                        </Button>
+                    </div>
                     <Form onSubmit={handleLogin}>
                         <Form.Group className="mb-3">
                             <InputGroup>
